@@ -1,0 +1,9 @@
+
+media_url=.list.m3u
+paint_scrollbar=no
+paint_path_box=no
+paint_help_line=no
+icon_path=.icon.png
+
+use_icon_view=yes
+icon_valign=center
