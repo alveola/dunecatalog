@@ -1,8 +1,5 @@
 #summary A MediaMonkey Script that creates a Music Index for the Dune Media Streamer.
 
-== Version ==
-0.9, 2012-11-01
-
 
 = Introduction =
 
@@ -37,12 +34,14 @@ Not a fancy OneClickInstallation(c), but a few steps are needed.
  # Change your Scripts.ini file. An example is enclosed below.
  # Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations.
 
+
 = Usage =
 
  # Make sure your MediaMonkey Library is up-to-date
  # Select one or more albums in MediaMonkey
  # Start the Script & press OK. The Index files will be generated and copied to the Dune Index Folder
  # Open the Index Folder on your Dune, select your music and enjoy
+
 
 = Features =
 
@@ -51,9 +50,11 @@ Not a fancy OneClickInstallation(c), but a few steps are needed.
  * *Simple Layout* The Menu Layout on Dune is simple: easy access and very accessible by DMC
  * *Local and Network Music Source* One local and one network music source can be indexed by this script and accessed by the Dune
 
+
 = Warning =
 
 Every new Index File will overwrite existing Index Files (is it a bug or a feature?), so be aware.
+
 
 = Scripts.ini (example) =
 
@@ -68,6 +69,7 @@ Language=VBScript
 ScriptType=0
 }}}
 
+
 = Needed =
 
  * HDI Dune Media Streamer
@@ -76,14 +78,20 @@ ScriptType=0
  * Network access to the Dune, with a network map name
  * up-to-date MediaMonkey file library
 
+
 = Tested on/with =
 
  * Dune Smart D1
  * Windows 7
  * MediaMonkey v4.06.1501
 
+
 = Limitations =
 
 DuneCatalog does not do:
  * Album Art Scraping
  * Mass Tagging
+ * Cover art can not be png (limitation by VBScript). jpg, bmp, gif is allowed
+
+= Version =
+0.9, 2012-11-01
