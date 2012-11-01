@@ -1,13 +1,14 @@
 #summary Free music manager and jukebox for large collections of CDs, MP3s and other audio files.
 
-= Introduction =
-Free music manager and jukebox for large collections of CDs, MP3s and other audio files.
-
-
 
 <wiki:comment>
+
+= Introduction =
+</wiki:comment>
+
 = Details =
 
+<wiki:comment>
 Add your content here.  Format your content with:
   * Text in *bold* or _italic_
   * Headings, paragraphs, and lists
