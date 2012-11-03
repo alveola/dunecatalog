@@ -2,7 +2,7 @@ DuneCatalog
 ===========
 A MediaMonkey Script that creates a Music Index for the Dune Media Streamer.
 
-Version 1.0, 2012-10-31
+Version 1.0, 2012-11-01
 
 Summary
 =======

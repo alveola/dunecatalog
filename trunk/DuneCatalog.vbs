@@ -36,7 +36,7 @@ OpenAdvancedOptionsByDefault = TRUE
 ' =============================================================================================
 
 lowform = 110
-highform = 300
+highform = 320
 newheight = lowform
 if OpenAdvancedOptionsByDefault Then newheight = highform
 
@@ -124,6 +124,12 @@ Sub OnStartUp() ' create form and controls
 	IndexFolder.Common.Hint = "Music Index Folder on Dune"
 	Set SDB.Objects("IndexFolder") = IndexFolder  
 	
+	Set ButtonOptions = SDB.UI.NewButton(Form1)
+	ButtonOptions.Common.SetRect 10, 54, 70, 20
+	ButtonOptions.Caption = "Options vvv"
+	ButtonOptions.Common.Hint = "Open Advanced Options below"
+	Script.RegisterEvent ButtonOptions.Common, "OnClick", "ButtonOptionsClick"
+	
 	Set ButtonCancel = SDB.UI.NewButton(Form1)
 	ButtonCancel.Common.SetRect 130, 45, 100, 28
 	ButtonCancel.Caption = "Cancel"
@@ -144,26 +150,29 @@ Sub OnStartUp() ' create form and controls
 	cbxAlbumSort.Common.Hint = "Sort selection by Album, then by Track number"
 	SDB.Objects("SortAlbum") = cbxAlbumSort
 	
-	REM Set cbxOverwrite = SDB.UI.NewCheckBox(Form1)
-	REM cbxOverwrite.Caption = "Overwrite Existing Files (not implemented yet)"
-	REM cbxOverwrite.Common.SetRect 35, 210, 315, 20
-	REM cbxOverwrite.Checked = DefaultOverwriteFiles
-	REM cbxOverwrite.Common.Hint = "Overwrite existing files"
-	REM SDB.Objects("OverwriteFiles") = cbxOverwrite
-	REM cbxOverwrite.Common.Enabled = FALSE
+	Set cbxOverwrite = SDB.UI.NewCheckBox(Form1)
+	cbxOverwrite.Caption = "Overwrite Existing Files (not implemented yet)"
+	cbxOverwrite.Common.SetRect 35, 210, 315, 20
+	cbxOverwrite.Checked = DefaultOverwriteFiles
+	cbxOverwrite.Common.Hint = "Overwrite existing files"
+	SDB.Objects("OverwriteFiles") = cbxOverwrite
+	cbxOverwrite.Common.Enabled = FALSE
+	
+	Set cbxUseIM = SDB.UI.NewCheckBox(Form1)
+	cbxUseIM.Caption = "Use ImageMagick to add AlbumArt (not implemented yet)"
+	cbxUseIM.Common.SetRect 35, 230, 315, 20
+	cbxUseIM.Checked = DefaultOverwriteFiles
+	cbxUseIM.Common.Hint = "Use ImageMagick to add AlbumArt"
+	SDB.Objects("UseImageMagick") = cbxUseIM
+	cbxUseIM.Common.Enabled = FALSE
 	
 	Dim lblInfo : Set lblInfo = SDB.UI.Newlabel(Form1)
-	lblInfo.Common.SetRect 140, 250, 315, 20
+	lblInfo.Common.SetRect 140, 270, 315, 20
 	lblInfo.Caption = "Keep mouse on any item for some more info"
-	
-	Set ButtonOptions = SDB.UI.NewButton(Form1)
-	ButtonOptions.Common.SetRect 10, 54, 70, 20
-	ButtonOptions.Caption = "Options vvv"
-	ButtonOptions.Common.Hint = "Open Advanced Options below"
-	Script.RegisterEvent ButtonOptions.Common, "OnClick", "ButtonOptionsClick"
+	lblInfo.Common.Hint = "Not on me, you Silly. I'm just a message."
 	
 	Set ButtonOpen = SDB.UI.NewButton(Form1)
-	ButtonOpen.Common.SetRect 10, 245, 120, 20
+	ButtonOpen.Common.SetRect 10, 265, 120, 20
 	ButtonOpen.Caption = "Open Script in Editor"
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
 	Script.RegisterEvent ButtonOpen.Common, "OnClick", "ButtonOpenClick"
@@ -497,9 +506,9 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	Set m3ufso = fso.CreateTextFile(m3ufilename ,True, False) ' False creates ascii file, which Dune likes/needs
 	m3ufso.Write(m3ufile)
 	m3ufso.Close ' Create m3u file
-	WriteCoverArt Arr, i, FirstFolder & ".icon.png" ' Cover art
+	WriteCoverArt Arr, i, FirstFolder & ".icon.jpg" ' Cover art
 	
-	set opic=loadpicture(FirstFolder & ".icon.png")
+	set opic=loadpicture(FirstFolder & ".icon.jpg")
 	'height and width properties return in himetric (0.01mm)
 	'numeric factors are just to convert them to pixel
 	h2=round(opic.height/2540*96)
@@ -564,28 +573,27 @@ Function GeneratePath(fso,pFolderPath)
 End Function
 
 Sub WriteCoverArt(aArr, i, aPath)
-	' test for existing cover art, preference for png
-	' jpg is also possible, Dune will show cover anyway :)
-	' NOTE: filename must be .icon.png, contents may be jpg. bmp is not checked
+	' test for existing cover art. JPG only, as png can't be read by vbscript
+	'
 	Set fso = CreateObject("Scripting.FileSystemObject")
 	REM SDB.MessageBox aArr(5, i), mtInformation, Array(mbOk)
 	Dim File : Set File = fso.GetFile(aArr(5, i))
 	FilePath = File.ParentFolder
-	AlbumArtFile = EndSlash(FilePath) & "cover.png"
-	If fso.FileExists(AlbumArtFile) Then
-		fso.CopyFile AlbumArtFile, aPath
-		Exit Sub
-	End If
-	AlbumArtFile = EndSlash(FilePath) & "front.png"
-	If fso.FileExists(AlbumArtFile) Then
-		fso.CopyFile AlbumArtFile, aPath
-		Exit Sub
-	End If
-	AlbumArtFile = EndSlash(FilePath) & "folder.png"
-	If fso.FileExists(AlbumArtFile) Then
-		fso.CopyFile AlbumArtFile, aPath
-		Exit Sub
-	End If
+	REM AlbumArtFile = EndSlash(FilePath) & "cover.png"
+	REM If fso.FileExists(AlbumArtFile) Then
+		REM fso.CopyFile AlbumArtFile, aPath
+		REM Exit Sub
+	REM End If
+	REM AlbumArtFile = EndSlash(FilePath) & "front.png"
+	REM If fso.FileExists(AlbumArtFile) Then
+		REM fso.CopyFile AlbumArtFile, aPath
+		REM Exit Sub
+	REM End If
+	REM AlbumArtFile = EndSlash(FilePath) & "folder.png"
+	REM If fso.FileExists(AlbumArtFile) Then
+		REM fso.CopyFile AlbumArtFile, aPath
+		REM Exit Sub
+	REM End If
 	AlbumArtFile = EndSlash(FilePath) & "cover.jpg"
 	If fso.FileExists(AlbumArtFile) Then
 		fso.CopyFile AlbumArtFile, aPath
@@ -601,7 +609,7 @@ Sub WriteCoverArt(aArr, i, aPath)
 		fso.CopyFile AlbumArtFile, aPath
 		Exit Sub
 	End If
-	fso.CopyFile DCScriptFilesFolder & "\cover.png", aPath
+	fso.CopyFile DCScriptFilesFolder & "\cover.jpg", aPath
 End Sub
 
 Sub CopyFiles(src, tgt)
@@ -610,7 +618,7 @@ Sub CopyFiles(src, tgt)
 	' copy m3u
 	Call fso.CopyFile(src & ".list.m3u", tgt,True)
 	' copy png
-	Call fso.CopyFile(src & ".icon.png", tgt,True)
+	Call fso.CopyFile(src & ".icon.jpg", tgt,True)
 	' copy dune_folder.txt
 	Call fso.CopyFile(src & "dune_folder.txt", tgt,True)
 	REM Call fso.CopyFile(DCScriptFilesFolder & "dune_folder.txt", tgt, True)
@@ -622,10 +630,10 @@ Sub CopyFolderFiles(tgt, artistF)
 	
 	' copy and rename dune_folder.txt
 	
-	If not fso.FileExists(tgt & ".icon.png") Then
-		If fso.FileExists(artistF & ".icon.png") Then
-			Call fso.CopyFile(artistF & ".icon.png", tgt, True)
-			set opic=loadpicture(artistF & ".icon.png")
+	If not fso.FileExists(tgt & ".icon.jpg") Then
+		If fso.FileExists(artistF & ".icon.jpg") Then
+			Call fso.CopyFile(artistF & ".icon.jpg", tgt, True)
+			set opic=loadpicture(artistF & ".icon.jpg")
 			'height and width properties return in himetric (0.01mm)
 			'numeric factors are just to convert them to pixel
 			h2=round(opic.height/2540*96)
@@ -636,7 +644,7 @@ Sub CopyFolderFiles(tgt, artistF)
 			WriteDuneSubFolder EndSlash(tgt) & "dune_folder.txt", ScaleFactor
 		Else 
 			' copy and rename png
-			Call fso.CopyFile(DCScriptFilesFolder & ".icon.png", tgt, True)
+			Call fso.CopyFile(DCScriptFilesFolder & ".icon.jpg", tgt, True)
 			Call fso.CopyFile(DCScriptFilesFolder & "SFdune_folder.txt", tgt & "dune_folder.txt", True)
 		End If
 	End If
@@ -879,7 +887,7 @@ Sub WriteDuneFolder(filename, scalefactor)
 	"paint_scrollbar=no" & chr(10) & _
 	"paint_path_box=no" & chr(10) & _
 	"paint_help_line=no" & chr(10) & _
-	"icon_path=.icon.png" & chr(10) & _
+	"icon_path=.icon.jpg" & chr(10) & _
 	"icon_scale_factor=" & scalefactor & chr(10) & _
 	"use_icon_view=yes" & chr(10) & _
 	"icon_valign=center" & chr(13) & chr(10)
@@ -890,7 +898,7 @@ Sub WriteDuneFolder(filename, scalefactor)
 End Sub
 
 Sub WriteDuneSubFolder(filename, scalefactor)
-	filecontent = "icon_path=.icon.png" & chr(10) & _
+	filecontent = "icon_path=.icon.jpg" & chr(10) & _
 	"icon_scale_factor=" & scalefactor & chr(10) & _
 	"background_path=../../../.service/.listbackground.jpg" & chr(10) & _
 	"use_icon_view=yes" & chr(10) & _
@@ -924,3 +932,36 @@ Function Max(a1, a2)
 		Max = a2
 	End If
 End Function
+
+Sub resizeImage(sourceFile, toWidth, toHeight, destinationFile)
+	
+	Dim imgWidth, imgHeight, img
+	Dim xScale, yScale
+	Dim newWidth, newHeight
+	Dim conversion
+	
+	' Load ImageMagick
+	Set img = CreateObject("ImageMagickObject.MagickImage.1")
+	
+	' Get current image size
+	imgWidth = img.Identify ("-format", "%w", sourceFile)
+	imgHeight = img.Identify ("-format", "%h", sourceFile)
+	
+	' Calculate scale
+	xScale = imgWidth / toWidth
+	yScale = imgHeight / toHeight
+	
+	' Calculate new width and height
+	if yScale > xScale then
+		newWidth = round(imgWidth * (1/yScale))
+		newHeight = round(imgHeight * (1/yScale))
+	else
+		newWidth = round(imgWidth * (1/xScale))
+		newHeight = round(imgHeight * (1/xScale))
+	end if
+	
+	' Run Convert to resize the image.
+	conversion = img.Convert("-resize", newWidth&"x"&newHeight&"!", sourceFile, destinationFile)
+	set conversion = nothing
+	
+end Sub
