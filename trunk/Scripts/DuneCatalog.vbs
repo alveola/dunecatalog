@@ -3,11 +3,11 @@ Option Explicit
 ' =============================================================================================
 ' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
-' Name		: DuneCatalog
-' Version	: 1.2
-' Date		: 2012-11-06
-' INSTALL	: See DuneCatalog.txt
-' URL			: http://code.google.com/p/dunecatalog/
+' Name    : DuneCatalog
+' Version : 1.2
+' Date    : 2012-11-06
+' INSTALL : See DuneCatalog.txt
+' URL     : http://code.google.com/p/dunecatalog/
 ' =============================================================================================
 '
 '
