@@ -3,7 +3,7 @@
 Some screenshots of the TV and Dune screens compared.
 
 
-|| ||*TV*||*DMC*||
+|| || *TV* || *DMC* ||
 ||Main Entry||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot42-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352232810298-s.jpg||
 ||ABC Selection||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot43-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352232842919-s.jpg||
 ||Albums||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot44-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352233062049-s.jpg||
