@@ -94,4 +94,7 @@ DuneCatalog does not do:
  * Cover art can not be png (limitation by VBScript). jpg, bmp, gif is allowed
 
 = Version =
-0.9, 2012-11-01
+1.2, 2012-11-06
+
+= Screenshot =
+http://dunecatalog.googlecode.com/svn/wiki/images/MediaMonkey_2012-11-06_22-25-34.png
