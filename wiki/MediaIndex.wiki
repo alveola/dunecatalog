@@ -1,0 +1,12 @@
+#summary Screenshots of the Dune Media Index
+
+Some screenshots of the TV and Dune screens compared.
+
+
+|| ||*TV*||*DMC*||
+||Main Entry||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot42-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352232810298-s.jpg||
+||ABC Selection||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot43-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352232842919-s.jpg||
+||Albums||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot44-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352233062049-s.jpg||
+||Artists||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot45-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352233022673-s.jpg||
+||Decades||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot46-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352233244310-s.jpg||
+||Years||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot47-s.jpg||http://dunecatalog.googlecode.com/svn/wiki/images/screenshot-1352233253774-s.jpg||
