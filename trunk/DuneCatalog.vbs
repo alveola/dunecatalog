@@ -1,17 +1,22 @@
+Option Explicit
+'
 ' =============================================================================================
-' Name		: DuneCatalog
-' Version	: 1.0
-' Date		: 2012-10-31
+' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
-' This MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
-'
-' Author	: Allart
-'
+' Name		: DuneCatalog
+' Version	: 1.2
+' Date		: 2012-11-06
 ' INSTALL	: See DuneCatalog.txt
+' URL			: http://code.google.com/p/dunecatalog/
 ' =============================================================================================
 '
 '
+' =============================================================================================
 ' Change next values to reflect your Windows/Network/Dune Setup
+' =============================================================================================
+Dim DuneIndexFolder, DuneMusicFolderName, DuneDriveLetter, NetworkMusicFolderName, NetworkDriveLetter
+Dim SortAlbumsByDefault, DefaultOverwriteFiles, OpenAdvancedOptionsByDefault, ThoroughAlbumArtScanByDefault
+Dim arrAlbum(), StartTime, EndTime
 '
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_Music\"
@@ -27,19 +32,23 @@ NetworkMusicFolderName = "smb://bat/music/"
 NetworkDriveLetter = "U"
 
 ' Some default checkboxes
-DefaultSortAlbums = TRUE
+SortAlbumsByDefault = TRUE
 ' Overwrite checkbox is not implemented (yet)
-REM DefaultOverwriteFiles = TRUE
-OpenAdvancedOptionsByDefault = TRUE
-
+DefaultOverwriteFiles = TRUE
+' Thorough AlbumArt Scan
+ThoroughAlbumArtScanByDefault = TRUE
+' Open lower Advanced Options panel by default 
+OpenAdvancedOptionsByDefault = FALSE
 ' Changes until here. Keep the rest unchanged, unless you know what you are doing.
 ' =============================================================================================
 
+Dim lowform, highform, newheight
 lowform = 110
 highform = 320
 newheight = lowform
 if OpenAdvancedOptionsByDefault Then newheight = highform
 
+Dim sScriptName, sScriptPath, DCScriptFilesFolder
 sScriptName = "DuneCatalog"
 
 Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
@@ -124,54 +133,54 @@ Sub OnStartUp() ' create form and controls
 	IndexFolder.Common.Hint = "Music Index Folder on Dune"
 	Set SDB.Objects("IndexFolder") = IndexFolder  
 	
-	Set ButtonOptions = SDB.UI.NewButton(Form1)
+	Dim ButtonOptions : Set ButtonOptions = SDB.UI.NewButton(Form1)
 	ButtonOptions.Common.SetRect 10, 54, 70, 20
 	ButtonOptions.Caption = "Options vvv"
 	ButtonOptions.Common.Hint = "Open Advanced Options below"
 	Script.RegisterEvent ButtonOptions.Common, "OnClick", "ButtonOptionsClick"
 	
-	Set ButtonCancel = SDB.UI.NewButton(Form1)
+	Dim ButtonCancel : Set ButtonCancel = SDB.UI.NewButton(Form1)
 	ButtonCancel.Common.SetRect 130, 45, 100, 28
 	ButtonCancel.Caption = "Cancel"
 	Script.RegisterEvent ButtonCancel, "OnClick", "ButtonCancelClick"
 	ButtonCancel.Cancel = True
 	ButtonCancel.Common.Hint = "End-Stop-Close-Cancel-Exit"
 	
-	Set ButtonGo = SDB.UI.NewButton(Form1)
+	Dim ButtonGo : Set ButtonGo = SDB.UI.NewButton(Form1)
 	ButtonGo.Common.SetRect 250, 45, 100, 28
 	ButtonGo.Caption = "Go"
 	ButtonGo.Common.Hint = "Start/Run/GO!"
 	Script.RegisterEvent ButtonGo.Common, "OnClick", "ButtonGoClick"
 	
-	Set cbxAlbumSort = SDB.UI.NewCheckBox(Form1)
+	Dim cbxAlbumSort : Set cbxAlbumSort = SDB.UI.NewCheckBox(Form1)
 	cbxAlbumSort.Caption = "Sort Album Selection"
 	cbxAlbumSort.Common.SetRect 35, 190, 315, 20
-	cbxAlbumSort.Checked = DefaultSortAlbums
+	cbxAlbumSort.Checked = SortAlbumsByDefault
 	cbxAlbumSort.Common.Hint = "Sort selection by Album, then by Track number"
 	SDB.Objects("SortAlbum") = cbxAlbumSort
 	
-	Set cbxOverwrite = SDB.UI.NewCheckBox(Form1)
-	cbxOverwrite.Caption = "Overwrite Existing Files (not implemented yet)"
+	Dim cbxOverwrite : Set cbxOverwrite = SDB.UI.NewCheckBox(Form1)
+	cbxOverwrite.Caption = "Overwrite Existing Files"
 	cbxOverwrite.Common.SetRect 35, 210, 315, 20
 	cbxOverwrite.Checked = DefaultOverwriteFiles
 	cbxOverwrite.Common.Hint = "Overwrite existing files"
 	SDB.Objects("OverwriteFiles") = cbxOverwrite
-	cbxOverwrite.Common.Enabled = FALSE
+	cbxOverwrite.Common.Enabled = TRUE
 	
-	Set cbxUseIM = SDB.UI.NewCheckBox(Form1)
-	cbxUseIM.Caption = "Use ImageMagick to add AlbumArt (not implemented yet)"
-	cbxUseIM.Common.SetRect 35, 230, 315, 20
-	cbxUseIM.Checked = DefaultOverwriteFiles
-	cbxUseIM.Common.Hint = "Use ImageMagick to add AlbumArt"
-	SDB.Objects("UseImageMagick") = cbxUseIM
-	cbxUseIM.Common.Enabled = FALSE
+	Dim cbxBetteraArtScan : Set cbxBetteraArtScan = SDB.UI.NewCheckBox(Form1)
+	cbxBetteraArtScan.Caption = "Thorough Album Art Selection (uses ImageMagick)"
+	cbxBetteraArtScan.Common.SetRect 35, 230, 315, 20
+	cbxBetteraArtScan.Checked = ThoroughAlbumArtScanByDefault
+	cbxBetteraArtScan.Common.Hint = "Needs ImageMagick to be installed"
+	SDB.Objects("DeepImageScan") = cbxBetteraArtScan
+	cbxBetteraArtScan.Common.Enabled = TRUE
 	
 	Dim lblInfo : Set lblInfo = SDB.UI.Newlabel(Form1)
 	lblInfo.Common.SetRect 140, 270, 315, 20
 	lblInfo.Caption = "Keep mouse on any item for some more info"
 	lblInfo.Common.Hint = "Not on me, you Silly. I'm just a message."
 	
-	Set ButtonOpen = SDB.UI.NewButton(Form1)
+	Dim ButtonOpen : Set ButtonOpen = SDB.UI.NewButton(Form1)
 	ButtonOpen.Common.SetRect 10, 265, 120, 20
 	ButtonOpen.Caption = "Open Script in Editor"
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
@@ -181,8 +190,8 @@ Sub OnStartUp() ' create form and controls
 End Sub
 
 Sub ButtonOptionsClick (Form1)
-	Set frm1 = SDB.Objects("Form1")
-	HH = frm1.Common.Height
+	Dim frm1 : Set frm1 = SDB.Objects("Form1")
+	Dim HH : HH = frm1.Common.Height
 	If HH = lowform Then	
 		newheight = highform
 	ElseIf HH = highform Then
@@ -192,8 +201,8 @@ Sub ButtonOptionsClick (Form1)
 End Sub
 
 Sub ButtonOpenClick (Form1)
-	cmd = "notepad++ "& sScriptPath & "\" & sScriptName & ".vbs"
-	dim objShell : Set objShell = CreateObject ("WScript.Shell")
+	Dim cmd : cmd = "notepad++ "& sScriptPath & "\" & sScriptName & ".vbs"
+	Dim objShell : Set objShell = CreateObject ("WScript.Shell")
 	On Error Resume Next
 	objShell.Run(cmd)
 	if Err.Number <> 0 Then
@@ -201,15 +210,21 @@ Sub ButtonOpenClick (Form1)
 		objShell.Run(cmd)
 	End If
 	Set objShell = Nothing
-	Call ButtonCancelClick
+	ButtonCancelClick
 End Sub
 
 Sub ButtonGoClick (Form1)
-	Dim arrAlbum()
-	Dim m3u, m3uvar
-	m3u = ""
-	m3uvar = ""
-	msg = ""
+	REM resizeImage "j:\music\M\Muse\(2003) Absolution\00absolution.jpg", 350, 350, "j:\_Music\Albums\01_A\Absolution - Muse (2003)\.icon.jpg"
+	REM 'resizeImage "e:\download\img\00absolution.jpg", 350, 350, "e:\download\img\abs-350.jpg"
+	REM SDB.Objects("Form1") = Nothing
+	REM exit sub
+	
+	StartTime = Timer()
+	
+	Dim maxFiles, CorrectSourceDir
+	Dim m3u, m3uvar, msg	
+	Dim musicfolder, netmusicfolder, tf, ntf, loc
+	Dim cbxSort, index, newline, newalbum, newvaralbum
 	
 	Set musicfolder = SDB.Objects("MusicFolder")
 	tf = SwapSlashes(musicfolder.Text)
@@ -218,82 +233,83 @@ Sub ButtonGoClick (Form1)
 	
 	Set cbxSort = SDB.Objects("SortAlbum") 
 	
-	LoadAlbumArray arrAlbum
+	Erase arrAlbum
+	LoadAlbumArray
 	maxFiles = UBound(arrAlbum,2)
-	if (maxFiles > 0) And (cbxSort.Checked) Then SortAlbumArray arrAlbum
+	if (maxFiles > 0) And (cbxSort.Checked) Then SortAlbumArray
 	
 	Dim Progress : Set Progress = SDB.Progress
 	Progress.MaxValue = maxFiles
 	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")  
 	
 	For index = 0 to maxFiles ' Loop through All Songs
-		Progress.Text = "Processing " & index+1 & "/" & maxFiles+1 & ": " & arrAlbum(3, index)
-	
-		if UCase(Left(arrAlbum(5, index), 1)) = UCase(DuneDriveLetter) Then loc = tf
-		if UCase(Left(arrAlbum(5, index), 1)) = UCase(NetworkDriveLetter) Then loc = ntf
-		' create .list.m3u
-		if index = 0 Then
-			newalbum = TRUE
-			REM if isVarAlbum(arrAlbum(7, index)) Then newvaralbum = TRUE
+		Progress.Text = "Processing Album " & index+1 & " of " & maxFiles+1 & ": " & arrAlbum(3, index) & " by " & arrAlbum(2, index)
+		' Is the Album on the Dune or the accesible network?
+		CorrectSourceDir = FALSE
+		if UCase(Left(arrAlbum(5, index), 1)) = UCase(DuneDriveLetter) Then 
+			loc = tf
+			CorrectSourceDir = TRUE
+		Elseif UCase(Left(arrAlbum(5, index), 1)) = UCase(NetworkDriveLetter) Then
+			loc = ntf
+			CorrectSourceDir = TRUE
 		End If
-		newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
-		if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
-		If newalbum Then
-			m3u = newline & chr(13) & chr(10)
-			newalbum = FALSE
-		Else
-			m3u = m3u & newline & chr(13) & chr(10)
-		End If
-		If newvaralbum Then
-			m3uvar = newline & chr(13) & chr(10)
-			newvaralbum = FALSE
-		Else
-			If isVarAlbum(arrAlbum(7, index)) Then m3uvar = m3uvar & newline & chr(13) & chr(10)
-		End If
-		If index = maxFiles Then ' End of list
-			If isVarAlbum(arrAlbum(7, index)) Then
-				CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
-				m3uvar = ""
-			Else
-				CreateCatalogFolders arrAlbum, index, m3u, TRUE
-				m3u = ""
+		
+		If CorrectSourceDir Then
+			' create .list.m3u
+			if index = 0 Then
+				newalbum = TRUE
 			End If
-				REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
-				REM m3u = ""
-			REM Else
-				REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
-				REM m3u = ""
-			REM End If
-		Else
-			If arrAlbum(6, index) < arrAlbum(6, index+1) Then ' End of Current ArtistAlbum
+			newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
+			if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
+			If newalbum Then
+				m3u = newline & chr(13) & chr(10)
+				newalbum = FALSE
+			Else
+				m3u = m3u & newline & chr(13) & chr(10)
+			End If
+			If newvaralbum Then
+				m3uvar = newline & chr(13) & chr(10)
+				newvaralbum = FALSE
+			Else
+				If isVarAlbum(arrAlbum(7, index)) Then m3uvar = m3uvar & newline & chr(13) & chr(10)
+			End If
+			If index = maxFiles Then ' End of list
 				If isVarAlbum(arrAlbum(7, index)) Then
 					CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
 					m3uvar = ""
-					newvaralbum = TRUE
 				Else
 					CreateCatalogFolders arrAlbum, index, m3u, TRUE
 					m3u = ""
-					newalbum = TRUE
-					REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
-				REM Else
-					REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
-					REM m3u = ""
-					REM newalbum = TRUE
 				End If
 			Else
-				If isVarAlbum(arrAlbum(7, index)) Then
-					REM CreateCatalogFolders arrAlbum, index, m3u, FALSE
-					m3u = ""
+				If arrAlbum(6, index) < arrAlbum(6, index+1) Then ' End of Current ArtistAlbum
+					If isVarAlbum(arrAlbum(7, index)) Then
+						CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
+						m3uvar = ""
+						newvaralbum = TRUE
+					Else
+						CreateCatalogFolders arrAlbum, index, m3u, TRUE
+						m3u = ""
+						newalbum = TRUE
+					End If
+				Else
+					If isVarAlbum(arrAlbum(7, index)) Then
+						m3u = ""
+					End If
 				End If
 			End If
+			Progress.Increase
 		End If
-		Progress.Increase
 	Next
-	SDB.MessageBox "Files Created, bye!", mtInformation, Array(mbOK)
+	EndTime = Timer()
+	SDB.MessageBox "Files Processed." & chr(10) & chr(13) & _
+		"Time: " & FormatNumber(EndTime - StartTime, 1) & " seconds." & chr(10) & chr(13) & _
+		"Bye!", mtInformation, Array(mbOK)
 	SDB.Objects("Form1") = Nothing
 End Sub
 
 Function HasSpecialCharacter(iString)
+	Dim i, a
 	For i=1 To Len(iString)
 		If (Asc(Mid(iString,i,1)) < 128) Then
 			a = FALSE
@@ -306,7 +322,7 @@ Function HasSpecialCharacter(iString)
 End Function
 
 Function CharSwap(iString)
-	a = Replace(FolderName, "?", "_")
+	iString = Replace(iString, "?", "_")
 	iString = Replace(iString, "¡", "Â¡")
 	iString = Replace(iString, "¢", "Â¢")
 	iString = Replace(iString, "£", "Â£")
@@ -417,8 +433,8 @@ Function DuneYearFolder(Y)
 	If vartype(Cint(Y)) <> 2 Then
 		DuneYearFolder = "unknown"
 	Else
-		StartY = 10 * (Y \ 10)
-		EndY = StartY + 9
+		Dim StartY : StartY = 10 * (Y \ 10)
+		Dim EndY : EndY = StartY + 9
 		DuneYearFolder = StartY & "-" & EndY
 	End If
 End Function
@@ -428,6 +444,7 @@ Function isNumeric(xyz)
 End Function
 
 Function DuneABCFolder(SubFolder)
+	Dim SFLetter, SFNumber, intSF
 	SFLetter = Left(UCase(SubFolder),1)
 	SFNumber = Asc(SFLetter)
 	DuneABCFolder = "28_-"
@@ -437,13 +454,13 @@ Function DuneABCFolder(SubFolder)
 		DuneABCFolder = intSF & "_" & SFLetter
 	End If
 	if ((SFNumber > 48) AND (SFNumber < 58)) Then 	DuneABCFolder = "27_#"
-	REM SDB.MessageBox DuneABCFolder, mtInformation, Array(mbOk)
 End Function
 
 Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	' Creates Folder Structure and Copies Files into it.
 	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
-	
+	Dim ArtistFolder, ArtistAlbumFolder, AlbumFolder, YearSubFolder, YearFolder, FirstFolder
+
 	' Create Artist Folder
 	If isVarAlbum(Arr(7, i)) Then
 		ArtistFolder = "Artists\" & DuneABCFolder("Various") & "\Various\"
@@ -494,50 +511,85 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	YearFolder = AllBackSlashes(RemoveSpecialCharacters(YearFolder))
 	YearFolder = DuneIndexFolder & YearFolder
 	
-	REM if isAlbum Then 
-		FirstFolder = AlbumFolder
-	REM Else
-		REM FirstFolder = ArtistAlbumFolder
-	REM End If
+	FirstFolder = AlbumFolder
 	
 	' Create Files
-	Call GeneratePath(fso, FirstFolder) ' Create First Path
+	Dim m3ufilename, m3ufso, TargetArt
+	GeneratePath fso, FirstFolder' Create First Path
 	m3ufilename = EndSlash(FirstFolder) & ".list.m3u"
-	Set m3ufso = fso.CreateTextFile(m3ufilename ,True, False) ' False creates ascii file, which Dune likes/needs
-	m3ufso.Write(m3ufile)
-	m3ufso.Close ' Create m3u file
-	WriteCoverArt Arr, i, FirstFolder & ".icon.jpg" ' Cover art
+	If OKtoOverwrite(m3ufilename) Then
+		Set m3ufso = fso.CreateTextFile(m3ufilename ,True, False) ' False creates ascii file, which Dune likes/needs
+		m3ufso.Write(m3ufile)
+		m3ufso.Close ' Create m3u file
+	End If
+	TargetArt = FirstFolder & ".icon.jpg"
+	If OKtoOverwrite(TargetArt) Then WriteCoverArt Arr, i, TargetArt ' Cover art
 	
-	set opic=loadpicture(FirstFolder & ".icon.jpg")
-	'height and width properties return in himetric (0.01mm)
-	'numeric factors are just to convert them to pixel
-	h2=round(opic.height/2540*96)
-	w2=round(opic.width/2540*96)
-	set opic=nothing
+	Dim ImDim, ScaleFactor
+	ImDim=ImageDimension(TargetArt)
+	ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
+	If OKtoOverwrite(EndSlash(FirstFolder) & "dune_folder.txt") Then WriteDuneFolder EndSlash(FirstFolder) & "dune_folder.txt", ScaleFactor
 	
-	ScaleFactor = Round(350/Max(h2, w2),3)
-	WriteDuneFolder EndSlash(FirstFolder) & "dune_folder.txt", ScaleFactor
+	GeneratePath fso, YearFolder
+	CopyFiles FirstFolder, YearFolder
 	
-	REM Call fso.CopyFile(DCScriptFilesFolder & "dune_folder.txt", FirstFolder, True) ' dune_folder.txt
+	GeneratePath fso, ArtistAlbumFolder
+	CopyFiles FirstFolder, ArtistAlbumFolder
 	
-	REM If isAlbum Then
-		Call GeneratePath(fso, YearFolder)
-		CopyFiles FirstFolder, YearFolder
-
-		Call GeneratePath(fso, ArtistAlbumFolder)
-		CopyFiles FirstFolder, ArtistAlbumFolder
-		CopyFolderFiles ArtistFolder, ArtistAlbumFolder
-		REM If not isVarAlbum(Arr(7, i)) Then
-			REM Call GeneratePath(fso, ArtistAlbumFolder)
-			REM CopyFiles FirstFolder, ArtistAlbumFolder
-			REM CopyFolderFiles ArtistFolder ArtistAlbumFolder
-		REM End If
-	REM Else
-		REM CopyFolderFiles ArtistFolder ArtistAlbumFolder
-	REM End If
+	CopyFolderFiles ArtistAlbumFolder, ArtistFolder
 End Sub
 
+Function ImageDimension(ImageFile)
+	Dim returnvalue(2)
+	Dim fso, ImFile, ImPath
+	Set fso = CreateObject("Scripting.FileSystemObject")
+	Set ImFile = fso.GetFile(ImageFile)
+	Dim UseIM : Set UseIM=SDB.Objects("DeepImageScan")
+	If UseIM.Checked Then	Dim oImage, ImSize, ImDim
+	
+	ImPath = ImFile.Path
+	If (fso.GetExtensionName(ImageFile) = "jpg") Then
+		On Error Resume Next' Check if jpg is really a jpg ...
+		Dim oPic : set oPic=loadpicture(IMPath)
+		If Err = 0 Then
+			'height and width properties return in himetric (0.01mm)
+			'numeric factors are just to convert them to pixel
+			returnvalue(0)=round(oPic.height/2540*96)
+			returnvalue(1)=round(oPic.width/2540*96)
+		Else
+			If UseIM.Checked Then
+				Set oIMage = CreateObject("ImageMagickObject.MagickImage.1")
+				ImSize = oIMage.Identify("-format", "%w %h", ImPath)
+				ImDim = Split(ImSize)
+				returnvalue(0) = ImDim(0)
+				returnvalue(1) = ImDim(1)
+				Set oIMage = Nothing
+			Else
+				returnvalue(0) = 0
+				returnvalue(1) = 0
+			End If
+		End If
+		Err.Clear
+		set oPic=nothing
+	Else
+		If UseIM.Checked Then
+			Set oIMage = CreateObject("ImageMagickObject.MagickImage.1")
+			ImSize = oIMage.Identify("-format", "%w %h", ImPath)
+			ImDim = Split(ImSize)
+			returnvalue(0) = ImDim(0)
+			returnvalue(1) = ImDim(1)
+			Set oIMage = Nothing
+		Else
+			returnvalue(0) = 0
+			returnvalue(1) = 0
+		End If
+	End If
+	ImageDimension=returnvalue
+	Set fso = Nothing
+End Function
+
 Function RemoveSpecialCharacters(FolderName)
+	Dim a
 	' remove special characters forbidden for file- and folder names
 	' " 	* 	/ 	: 	< 	> 	? 	\ 	|
 	a = Replace(FolderName, "?", "_")
@@ -546,7 +598,6 @@ Function RemoveSpecialCharacters(FolderName)
 	a = Replace(a, "<", "[")
 	a = Replace(a, ">", "]")
 	a = Replace(a, "|", "_")
-	
 	a = Replace(a, """", "_")
 	RemoveSpecialCharacters = a
 End Function
@@ -561,7 +612,6 @@ End Function
 
 Function GeneratePath(fso,pFolderPath)
   GeneratePath = False
-	REM SDB.MessageBox pFolderPath, mtInformation, Array(mbOk))
   If Not fso.FolderExists(pFolderPath) Then
     If GeneratePath(fso,fso.GetParentFolderName(pFolderPath)) Then
       GeneratePath = True
@@ -573,98 +623,196 @@ Function GeneratePath(fso,pFolderPath)
 End Function
 
 Sub WriteCoverArt(aArr, i, aPath)
-	' test for existing cover art. JPG only, as png can't be read by vbscript
-	'
-	Set fso = CreateObject("Scripting.FileSystemObject")
-	REM SDB.MessageBox aArr(5, i), mtInformation, Array(mbOk)
+	' loop through images. Images are Ranked to find best suitable image:
+	' preference for only copying (speed)
+	' preference for files with front/folder/cover in their name
+	' ranking:
+	' Size:	middle=5, large=4, small=2
+	' Type: JPG=3, any=2
+	' Name: front=6, cover/folder=5, other=1
+	
+	' Music Source Path
+	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	Dim File : Set File = fso.GetFile(aArr(5, i))
-	FilePath = File.ParentFolder
-	REM AlbumArtFile = EndSlash(FilePath) & "cover.png"
-	REM If fso.FileExists(AlbumArtFile) Then
-		REM fso.CopyFile AlbumArtFile, aPath
-		REM Exit Sub
-	REM End If
-	REM AlbumArtFile = EndSlash(FilePath) & "front.png"
-	REM If fso.FileExists(AlbumArtFile) Then
-		REM fso.CopyFile AlbumArtFile, aPath
-		REM Exit Sub
-	REM End If
-	REM AlbumArtFile = EndSlash(FilePath) & "folder.png"
-	REM If fso.FileExists(AlbumArtFile) Then
-		REM fso.CopyFile AlbumArtFile, aPath
-		REM Exit Sub
-	REM End If
-	AlbumArtFile = EndSlash(FilePath) & "cover.jpg"
-	If fso.FileExists(AlbumArtFile) Then
-		fso.CopyFile AlbumArtFile, aPath
-		Exit Sub
+	Dim FilePath : FilePath = File.ParentFolder
+	Dim UseIM : Set UseIM=SDB.Objects("DeepImageScan")
+	Dim Imdim, MaxDim, CFN, CFE, SrcCoverArt
+	Dim BestRank, CurrentRank, BestIm, BestAction, CurAction
+	
+	If OKtoOverwrite(aPath) Then
+		If UseIM.Checked Then' Advanced Ranking AlbumArt, using IM
+			' get image files in folder (jpg, png)
+			Dim folder, files, NewsFile, sFolder, fileIdx
+			Set folder = fso.GetFolder(FilePath)
+			Set files = folder.Files
+			
+			For Each fileIdx In files
+				CurrentRank = 0
+				CurAction = 1
+				CFE = UCase(fso.GetExtensionName(fileIdx))
+				If CFE = "JPG" Then
+					CurrentRank = 3
+					ImDim = ImageDimension(fileIdx)
+					MaxDim = max(ImDim(0), ImDim(1))
+				ElseIf (CFE = "BMP" or CFE = "PNG") Then
+					CurrentRank = 2
+					CurAction = 2
+					ImDim = ImageDimension(fileIdx)
+					MaxDim = max(ImDim(0), ImDim(1))
+				Else
+					CurrentRank = 0
+					CurAction = 0
+					MaxDim = 0
+				End If
+				CFN = fso.GetFileName(fileIdx)
+				If InStr(1, CFN,"front", 1) Then
+					CurrentRank = 6 * CurrentRank
+				ElseIf (InStr(1, CFN,"cover", 1) Or InStr(1, CFN,"front", 1)) Then
+					CurrentRank = 5 * CurrentRank
+				Else
+					CurrentRank = 1 * CurrentRank
+				End If
+				If (MaxDim > 350) Then
+						CurrentRank = 4 * CurrentRank
+						CurAction = 2
+					ElseIf (MaxDim < 200) Then
+						CurrentRank = 2 * CurrentRank
+						CurAction = 2
+					Else
+						CurrentRank = 5 * CurrentRank
+				End If
+				
+				If (CurrentRank > BestRank) Then
+					BestRank = CurrentRank
+					BestIM = fileIDX.Path
+					BestAction = CurAction
+				End If
+			Next
+			
+			If BestAction = 1 Then
+				fso.CopyFile BestIM, aPath
+				SrcCoverArt = EndSlash(fso.GetParentFolderName(BestIM)) & "cover.jpg"
+				If (not fso.FileExists(SrcCoverArt)) Then Call fso.CopyFile(aPath, SrcCoverArt)
+			ElseIf BestAction = 2 Then
+				resizeImage BestIM, 350, 350, aPath
+				SrcCoverArt = EndSlash(fso.GetParentFolderName(BestIM)) & "cover.jpg"
+				If (not fso.FileExists(SrcCoverArt)) Then Call fso.CopyFile(aPath, SrcCoverArt)
+			Else
+				' default "anonymous" albumart
+				fso.CopyFile DCScriptFilesFolder & "\cover.jpg", aPath
+			End If
+		Else' Simply Copying existing jpg
+			Dim AlbumArtFile
+			AlbumArtFile = EndSlash(FilePath) & "front.jpg"
+			If fso.FileExists(AlbumArtFile) Then
+				If FitImage(AlbumArtFile) Then
+					fso.CopyFile AlbumArtFile, aPath
+					Exit Sub
+				End If
+			End If
+			AlbumArtFile = EndSlash(FilePath) & "cover.jpg"
+			If fso.FileExists(AlbumArtFile) Then
+				If FitImage(AlbumArtFile) Then
+					fso.CopyFile AlbumArtFile, aPath
+					Exit Sub
+				End If
+			End If
+			AlbumArtFile = EndSlash(FilePath) & "folder.jpg"
+			If fso.FileExists(AlbumArtFile) Then
+				If FitImage(AlbumArtFile) Then
+					fso.CopyFile AlbumArtFile, aPath
+					Exit Sub
+				End If
+			End If
+			' default "anonymous" albumart
+			fso.CopyFile DCScriptFilesFolder & "\cover.jpg", aPath
+		End If
 	End If
-	AlbumArtFile = EndSlash(FilePath) & "front.jpg"
-	If fso.FileExists(AlbumArtFile) Then
-		fso.CopyFile AlbumArtFile, aPath
-		Exit Sub
-	End If
-	AlbumArtFile = EndSlash(FilePath) & "folder.jpg"
-	If fso.FileExists(AlbumArtFile) Then
-		fso.CopyFile AlbumArtFile, aPath
-		Exit Sub
-	End If
-	fso.CopyFile DCScriptFilesFolder & "\cover.jpg", aPath
+	set fso = Nothing
+	set files = Nothing
 End Sub
+
+Function FitImage(Img)
+	FitImage=FALSE
+	Dim ImDim : ImDim = ImageDimension(Img)
+	Dim MaxImDim : MaxImDim = max(ImDim(0), ImDim(1))
+	If (MaxImDim >= 200) AND (MaxImDim <= 350) Then FitImage = TRUE
+End Function
+
+Function OKtoOverwrite(aFile)
+	Dim OverwriteFile : Set OverwriteFile = SDB.Objects("OverwriteFiles")
+  Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
+	OKtoOverwrite = TRUE
+	' don't overwrite if file exists and overwrite is not allowed
+	If fso.FileExists(aFile) And Not OverwriteFile.Checked Then OKtoOverwrite = FALSE
+End Function
 
 Sub CopyFiles(src, tgt)
 	' Copy files from source to target
   Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	' copy m3u
-	Call fso.CopyFile(src & ".list.m3u", tgt,True)
+	If OKtoOverwrite(tgt & ".list.m3u") Then fso.CopyFile src & ".list.m3u", tgt
 	' copy png
-	Call fso.CopyFile(src & ".icon.jpg", tgt,True)
+	If OKtoOverwrite(tgt & ".icon.jpg") Then fso.CopyFile src & ".icon.jpg", tgt
 	' copy dune_folder.txt
-	Call fso.CopyFile(src & "dune_folder.txt", tgt,True)
-	REM Call fso.CopyFile(DCScriptFilesFolder & "dune_folder.txt", tgt, True)
+	If OKtoOverwrite(tgt & "dune_folder.txt") Then fso.CopyFile src & "dune_folder.txt", tgt
+	REM If OKtoOverwrite(tgt & "dune_folder.txt") Then fso.CopyFile(DCScriptFilesFolder & "dune_folder.txt", tgt
 End Sub
 
-Sub CopyFolderFiles(tgt, artistF)
-	' Copy files from source to target
+Sub CopyFolderFiles(albumF, artistF)
+	' Copy files from AlbumFolder to Artist (sub) Folder to have a nice icon on screen here as well.
+	' Is the Default Icon Exists and a newe one is present it will be overwritten.
+	
   Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
+	Dim CreateArtistIcon : CreateArtistIcon = FALSE
+	Dim DefFile, TgtFile
 	
-	' copy and rename dune_folder.txt
 	
-	If not fso.FileExists(tgt & ".icon.jpg") Then
-		If fso.FileExists(artistF & ".icon.jpg") Then
-			Call fso.CopyFile(artistF & ".icon.jpg", tgt, True)
-			set opic=loadpicture(artistF & ".icon.jpg")
+	If not fso.FileExists(artistF & ".icon.jpg") Then
+		CreateArtistIcon = TRUE
+	Else
+		Set DefFile = fso.GetFile(DCScriptFilesFolder & "cover.jpg")
+		Set TgtFile = fso.GetFile(artistF & ".icon.jpg")
+		If (DefFile.Size = TgtFile.Size) AND (DefFile.DateLastModified = TgtFile.DateLastModified) Then
+			CreateArtistIcon = TRUE
+		End If
+	End If
+	
+	If CreateArtistIcon Then
+		If fso.FileExists(albumF & ".icon.jpg") Then
+			Dim h2, w2, ScaleFactor
+			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile albumF & ".icon.jpg", artistF
+			Dim oPic : set oPic=loadpicture(albumF & ".icon.jpg")
 			'height and width properties return in himetric (0.01mm)
 			'numeric factors are just to convert them to pixel
-			h2=round(opic.height/2540*96)
-			w2=round(opic.width/2540*96)
-			set opic=nothing
-			
+			h2=round(oPic.height/2540*96)
+			w2=round(oPic.width/2540*96)
+			set oPic=nothing
 			ScaleFactor = Round(350/Max(h2, w2),3)
-			WriteDuneSubFolder EndSlash(tgt) & "dune_folder.txt", ScaleFactor
-		Else 
-			' copy and rename png
-			Call fso.CopyFile(DCScriptFilesFolder & ".icon.jpg", tgt, True)
-			Call fso.CopyFile(DCScriptFilesFolder & "SFdune_folder.txt", tgt & "dune_folder.txt", True)
+			WriteDuneSubFolder EndSlash(artistF) & "dune_folder.txt", ScaleFactor
+		Else
+			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile DCScriptFilesFolder & ".icon.jpg", artistF
+			If OKtoOverwrite(artistF & "dune_folder.txt") Then fso.CopyFile DCScriptFilesFolder & "SFdune_folder.txt", artistF & "dune_folder.txt"
 		End If
 	End If
 End Sub
 
-Sub LoadAlbumArray(aTracks) ' Loads all files into an Array
-	Set Tracks = SDB.CurrentSongList
+Sub LoadAlbumArray' Loads all files into an Array
+	Dim Tracks, i : Set Tracks = SDB.CurrentSongList
 	Dim NumTracks : NumTracks = Tracks.Count
+	Dim aSize
 	For i = 0 to NumTracks-1
 		Dim trk : Set trk = Tracks.Item(i)
-		AddTrack aTracks, trk
+		AddTrack trk
 	Next
 End Sub
 
 Function SkipDrive(aPath)
 	' remove driveletter and :\ of aPath
 	' remove :\
-	A = Replace(aPath, ":\", "")
+	Dim A : A = Replace(aPath, ":\", "")
 	' remove driveletter
-	SkipDrive = Right(a,Len(A)-1)
+	SkipDrive = Right(A,Len(A)-1)
 End Function
 
 Function SwapSlashes(aString)
@@ -677,49 +825,66 @@ Function AllBackSlashes(aString)
 	AllBackSlashes = Replace(aString, "/", "\")
 End Function
 
-Sub SortAlbumArray(aTracks)
+Sub SortAlbumArray
 	' Sort Main Array by Album and TrackNumber
 	
-	maxFiles = UBound(aTracks,2)
+	Dim maxFiles : maxFiles = UBound(arrAlbum,2)
+	Dim LowBound, HighBound, albumindex, newalbum, i, lowerB
 	
-	' Sort by Album Name
-	LowBound = LBound(aTracks, 2)
-	HighBound = UBound(aTracks, 2)
-	QuickSortCol aTracks,LowBound,HighBound,3
-	
-	' indentify albums and sort by tracknumber
+	' Sort by Album Name First
+	LowBound = LBound(arrAlbum, 2)
+	HighBound = UBound(arrAlbum, 2)
+	QuickSortCol arrAlbum,LowBound,HighBound,3
 	' albums with the same name are not identified (add artist/various/empty)
+	' Question: how many albums exist with the same name and are indexed in the same run? ... Well?
+	
+	' Now Sort each album by tracknumber
 	albumindex = 1 ' First album index
 	newalbum = TRUE
-	For i=0 to Ubound(aTracks, 2) - 1
+	For i=0 to Ubound(arrAlbum, 2) - 1
 		If newalbum Then
 			lowerB = i
 			newalbum = FALSE
 		End If
-		aTracks(6, i) = albumindex
+		arrAlbum(6, i) = albumindex
 		
-		If (aTracks(3, i) <> aTracks(3, i+1)) Then
+		If (arrAlbum(3, i) <> arrAlbum(3, i+1)) Then
 			newalbum = TRUE
 			albumindex = albumindex + 1
 			If i > lowerB Then
-				QuickSortCol aTracks,lowerB,i,0
+				QuickSortCol arrAlbum,lowerB,i,0
 			End If
-			If (i = maxFiles - 1) Then aTracks(6, i+1) = albumindex
+			If (i = maxFiles - 1) Then arrAlbum(6, i+1) = albumindex
 		Else
 			If (i = maxFiles - 1) Then
-				aTracks(6, i+1) = albumindex
-				QuickSortCol aTracks,lowerB,i+1,0
+				arrAlbum(6, i+1) = albumindex
+				QuickSortCol arrAlbum,lowerB,i+1,0
 			End If
 		End If
 	Next
 End Sub
 
-Sub AddTrack(myArray, Track)
+Sub AddTrack(aTrack)
 	' An "Intuitive" Array with fixed #columns and variable #rows CANNOT be REDIM'ed AND having its data PRESERVED.
-	' SO: the data "matrix" is transposed ...
-	On Error Resume Next
+	' SO: the data "matrix" is transposed
+	'
+	' 0 Disc.Tracknumber
+	' 1 Title
+	' 2 Artist
+	' 3 AlbumName
+	' 4 Year
+	' 5 TrackPath
+	' 6 "Album Index"
+	' 7 AlbumArtist
+	'
+	Dim idxLast
+	Dim discno : discno = ""
+	Dim preZero : preZero = ""
+	Dim i
+	
 	' [1] Retrieve the index number of the last element in the array
-	idxLast = UBound(myArray,2)
+	On Error Resume Next
+	idxLast = UBound(arrAlbum,2)
 	If not Err = 0 Then
 			idxLast = -1
 			' This array is not empty.
@@ -727,50 +892,44 @@ Sub AddTrack(myArray, Track)
 	End If
 	
 	' [2] Resize the array, preserving the current content
-	ReDim Preserve myArray(7, idxLast + 1)
+	ReDim Preserve arrAlbum(7, idxLast + 1)
 	' [3] Add the new element to the array
-	discno = ""
-	if Track.DiscNumberStr <> 0 Then discno = Track.DiscNumberStr & "."
-	REM SDB.MessageBox discno, mtInformation, Array(mbOk)
-	REM SDB.MessageBox len(Track.TrackOrderStr), mtInformation, Array(mbOk)
-	preZero = ""
-	For i = 0 to 3 - len(Track.TrackOrderStr)
+	if aTrack.DiscNumberStr <> 0 Then discno = aTrack.DiscNumberStr & "."
+
+	For i = 0 to 3 - len(aTrack.TrackOrderStr)
 		preZero = preZero & "0"
 	Next
-	REM SDB.MessageBox preZero, mtInformation, Array(mbOk)
 	
-	myArray(0, idxLast + 1) = discno & preZero & Track.TrackOrderStr
-	REM myArray(0, idxLast + 1) = discno & Track.TrackOrderStr
-	myArray(1, idxLast + 1) = Track.Title
+	arrAlbum(0, idxLast + 1) = discno & preZero & aTrack.TrackOrderStr
+	arrAlbum(1, idxLast + 1) = aTrack.Title
 	
-	REM SDB.MessageBox myArray(0, idxLast + 1), mtInformation, Array(mbOk)
 	' Artist
-	If Track.ArtistName = "" Then
-		If isVarAlbum(Track.AlbumArtistName) Then
-			myArray(2, idxLast + 1) = "Various"
+	If aTrack.ArtistName = "" Then
+		If isVarAlbum(aTrack.AlbumArtistName) Then
+			arrAlbum(2, idxLast + 1) = "Various"
 		Else	
-			myArray(2, idxLast + 1) = "Unknown"
+			arrAlbum(2, idxLast + 1) = "Unknown"
 		End If
 	Else
-		myArray(2, idxLast + 1) = Track.ArtistName
+		arrAlbum(2, idxLast + 1) = aTrack.ArtistName
 	End If
 	
 	' See if AlbumName exists. If not, name it unknown
-	If Track.AlbumName = "" Then
-		myArray(3, idxLast + 1) = "Unknown"
+	If aTrack.AlbumName = "" Then
+		arrAlbum(3, idxLast + 1) = "Unknown"
 	Else
-		myArray(3, idxLast + 1) = Track.AlbumName
+		arrAlbum(3, idxLast + 1) = aTrack.AlbumName
 	End If
 	
 	' See if Year exists
-	If Track.Year = "" Then
-		myArray(4, idxLast + 1) = "0000"
+	If aTrack.Year = "" Then
+		arrAlbum(4, idxLast + 1) = "0000"
 	Else
-		myArray(4, idxLast + 1) = Track.Year
+		arrAlbum(4, idxLast + 1) = aTrack.Year
 	End If
 	
-	myArray(5, idxLast + 1) = Track.Path
-	myArray(7, idxLast + 1) = Track.AlbumArtistName
+	arrAlbum(5, idxLast + 1) = aTrack.Path
+	arrAlbum(7, idxLast + 1) = aTrack.AlbumArtistName
 End Sub
 
 Function isVarAlbum(AlbumArtist)
@@ -787,6 +946,7 @@ Function isVarAlbum(AlbumArtist)
 End Function
 
 Sub Btn2Click
+	' used in development only for quick reloading script
   SDB.Objects("Form1") = Nothing ' Remove the last reference to our form which also causes it to disappear
   Script.Reload("c:\Users\allart\AppData\Roaming\MediaMonkey\Scripts\DuneCatalog.vbs")
 End Sub
@@ -796,6 +956,8 @@ Sub ButtonCancelClick
 End Sub
 
 Sub QuickSortCol(vec,loBound,hiBound,SortField)
+	' copied from: http://www.4guysfromrolla.com/webtech/012799-3.shtml
+	' rewritten to Columns instead of Rows by alveola
 	'
   '==--------------------------------------------------------==
   '== Sort a 2 dimensional array on SortField                ==
@@ -863,17 +1025,17 @@ Sub QuickSortCol(vec,loBound,hiBound,SortField)
 End Sub  'QuickSortCol
 
 Sub SwapCols(ary,col1,col2)
-  '== This proc swaps two rows of an array 
+  '== This proc swaps two columns of an array 
   Dim x,tempvar
   For x = 0 to Ubound(ary,1)
     tempvar = ary(x, col1)    
     ary(x, col1) = ary(x, col2)
     ary(x, col2) = tempvar
   Next
-End Sub  'SwapRows
+End Sub  'SwapCols
 
 Sub PrintAlbumArray(aTracks)
-	Dim msg
+	Dim msg, idxLast, i
 	msg = ""
 	idxLast = UBound(aTracks,2)
 	For i = 0 to idxLast
@@ -883,7 +1045,9 @@ Sub PrintAlbumArray(aTracks)
 End Sub
 
 Sub WriteDuneFolder(filename, scalefactor)
-	filecontent = "media_url=.list.m3u" & chr(10) & _
+	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
+	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
+	Dim filecontent : filecontent = "media_url=.list.m3u" & chr(10) & _
 	"paint_scrollbar=no" & chr(10) & _
 	"paint_path_box=no" & chr(10) & _
 	"paint_help_line=no" & chr(10) & _
@@ -892,13 +1056,14 @@ Sub WriteDuneFolder(filename, scalefactor)
 	"use_icon_view=yes" & chr(10) & _
 	"icon_valign=center" & chr(13) & chr(10)
 	
-	Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
 	dftfso.Write(filecontent)
 	dftfso.Close ' Create DuneFolder.txt file
 End Sub
 
 Sub WriteDuneSubFolder(filename, scalefactor)
-	filecontent = "icon_path=.icon.jpg" & chr(10) & _
+	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
+	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
+	Dim filecontent : filecontent = "icon_path=.icon.jpg" & chr(10) & _
 	"icon_scale_factor=" & scalefactor & chr(10) & _
 	"background_path=../../../.service/.listbackground.jpg" & chr(10) & _
 	"use_icon_view=yes" & chr(10) & _
@@ -920,7 +1085,6 @@ Sub WriteDuneSubFolder(filename, scalefactor)
 	"icon_bottom=100" & chr(10) & _
 	"caption_font_size=normal" & chr(13) & chr(10)
 	
-	Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
 	dftfso.Write(filecontent)
 	dftfso.Close ' Create DuneFolder.txt file
 End Sub
@@ -962,6 +1126,9 @@ Sub resizeImage(sourceFile, toWidth, toHeight, destinationFile)
 	
 	' Run Convert to resize the image.
 	conversion = img.Convert("-resize", newWidth&"x"&newHeight&"!", sourceFile, destinationFile)
-	set conversion = nothing
 	
+	' Lazy attempt to create better looking images ...
+	REM conversion = img.Convert("( +clone -alpha extract -draw ""fill black polygon 0,0 0,%CD% %CD%,0 fill white circle %CD%,%CD% %CD%,0"" ( +clone -flip ) -compose Multiply -composite ( +clone -flop ) -compose Multiply -composite ) -alpha off -compose CopyOpacity -composite", , sourceFile, destinationFile)
+	
+	set conversion = nothing
 end Sub
