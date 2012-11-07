@@ -1,0 +1,100 @@
+#summary A MediaMonkey Script that creates a Music Index for the Dune Media Streamer.
+
+
+= Introduction =
+
+On the Dune Streamer a Media Index can be created by a system of folders and files.
+Even for a small number of files, it is a lot of work to create and maintain such
+an index. Various applications have been created for Video (yaDIS, Zappiti, etc.).
+For Music only Dune Music Library (promising, but not finished) and Musicnizer
+(not free) exist.
+
+This script uses an existing MediaMonkey library and creates a simple Music Index.
+The Menu can be searched by: Album, Artist And Year. Below these are subfolders
+to make the catalog manageable and finding music easy and quick.
+
+The Index is created with the Android App DMC in mind. DMC can read the Dune Index
+folder and present the same menu on your phone/tablet. This means, it is possible
+to navigate through your music without having the TV on and without pointing your
+remote to the TV (as it works with wifi).
+
+This is my first script in MediaMonkey. I wanted a simple Menu Index, which it is,
+and it works very well for me. If you are looking for a more extensive index,
+try Dune Music Library or Musicnizer. I'd thought to share it at this moment. Use it,
+like it, change it, it's yours.
+
+
+= Installation =
+
+Not a fancy OneClickInstallation(c), but a few steps are needed.
+
+ # Unzip the file to a temporary folder
+ # Copy the folder DuneIndex to your Dune Media Player. This folder is the Music Index Folder. Name it whatever you like. Remember its location, as you need it at step 5.
+ # Copy the content of the folder scripts to your local MediaMonkey Scripts folder
+ # Change your Scripts.ini file. An example is enclosed below.
+ # Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations.
+
+
+= Usage =
+
+ # Make sure your MediaMonkey Library is up-to-date
+ # Select one or more albums in MediaMonkey
+ # Start the Script & press OK. The Index files will be generated and copied to the Dune Index Folder
+ # Open the Index Folder on your Dune, select your music and enjoy
+
+
+= Features =
+
+ * *Sorting* Selected Files will be sorted by Album, then by Disc.Track Number (on/off with checkbox).
+ * *Collections* Albums that have multiple artists and the word "various" as the first word in the 'albumartist' tag are grouped together as "various" albums.
+ * *Simple Layout* The Menu Layout on Dune is simple: easy access and very accessible by DMC
+ * *Local and Network Music Source* One local and one network music source can be indexed by this script and accessed by the Dune
+
+
+= Warning =
+
+Every new Index File will overwrite existing Index Files (is it a bug or a feature?), so be aware.
+
+
+= Scripts.ini (example) =
+
+{{{
+[DuneCatalog]
+Filename=DuneCatalog.vbs
+Procname=OnStartUp
+Order=99
+DisplayName=Dune Catalog Creator
+Description=Creates a Music Index for the Dune Media Player
+Language=VBScript
+ScriptType=0
+}}}
+
+
+= Needed =
+
+ * HDI Dune Media Streamer
+ * MS Windows
+ * MediaMonkey
+ * Network access to the Dune, with a network map name
+ * up-to-date MediaMonkey file library
+
+
+= Tested on/with =
+
+ * Dune Smart D1
+ * Windows 7
+ * MediaMonkey v4.06.1501
+
+
+= Limitations =
+
+DuneCatalog does not do:
+ * Album Art Scraping
+ * Mass Tagging
+ * Cover art can not be png (limitation by VBScript). jpg, bmp, gif is allowed
+
+= Version =
+1.2, 2012-11-06
+
+= Screenshot =
+http://dunecatalog.googlecode.com/svn/wiki/images/MediaMonkey_2012-11-06_22-25-34.png
