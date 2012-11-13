@@ -26,14 +26,31 @@ like it, change it, it's yours.
 
 = Installation =
 
-Not a fancy OneClickInstallation(c), but a few steps are needed.
+Not a fancy OneClickInstallation(c), but a few steps are needed. Since version 1.3, the Main Index Folder is separated from the actual MediaMonkey script. You can still download a predefined Index Folder, or create one yourself by using the batch files included (ImageMagick).
 
- # Unzip the file to a temporary folder
- # Copy the folder DuneIndex to your Dune Media Player. This folder is the Music Index Folder. Name it whatever you like. Remember its location, as you need it at step 5.
- # Copy the content of the folder scripts to your local MediaMonkey Scripts folder
- # Change your Scripts.ini file. An example is enclosed below.
- # Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations.
+==Script==
 
+The script itself must be copied to the MediaMonkey Folder:
+  # Unzip the file to a temporary folder
+  # Copy the content of the folder scripts to your local MediaMonkey Scripts folder
+  # Change your Scripts.ini file. An example is enclosed below.
+
+==Index Folder==
+
+To create the basic Index Folder, you have two options (A: use a default or B: create by using batch files).
+ 
+===A: Use the default (download 10Mb)===
+  # download the file
+  # unpack
+  # copy the DuneIndex Folder to your Dune Media Player
+
+===B: Create these by running a DOS batch script (needs ImageMagick)===
+  # goto subfolder CreateIndexFolder
+  # edit `_HitMe_CreateDuneIndex.cmd` and fill in the ImageMagick folder
+  # start `_HitMe_CreateDuneIndex.cmd` and wait for around 80s (on my Core2Duo 2.66Ghz)
+  # copy the DuneIndex Folder to your Dune Media Player
+    
+This DuneIndex folder is the Music Index Folder. Name it whatever you like. Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations.
 
 = Usage =
 
