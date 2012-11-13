@@ -1,0 +1,17 @@
+#summary ImageMagick® is a software suite to create, edit, compose, or convert bitmap images.
+
+<wiki:comment>
+
+= Introduction =
+</wiki:comment>
+
+= Details =
+
+<wiki:comment>
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
+</wiki:comment>
+
+[http://www.imagemagick.org/ Website]
