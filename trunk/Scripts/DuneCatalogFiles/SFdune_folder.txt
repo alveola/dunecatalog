@@ -1,6 +1,4 @@
-
-icon_path=.icon.png
-icon_sel_scale_factor=1.3
+icon_path=.icon.jpg
 icon_scale_factor=1.3
 background_path=../../../.service/.listbackground.jpg
 use_icon_view=yes

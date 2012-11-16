@@ -2,7 +2,8 @@ DuneCatalog
 ===========
 A MediaMonkey Script that creates a Music Index for the Dune Media Streamer.
 
-Version 1.2, 2012-11-06
+Version 1.4, 2012-11-16
+
 
 Summary
 =======
@@ -30,13 +31,36 @@ like it, change it, it's yours.
 Installation
 ============
 Not a fancy OneClickInstallation(c), but a few steps are needed.
+Since version 1.4, the Main Index Folder is separated from the actual MediaMonkey script.\
+You can still download a predefined Index Folder, or create one yourself
+by using the batch files included (ImageMagick).
 
+Script
+------
+The script itself must be copied to the MediaMonkey Folder:
 1. Unzip the file to a temporary folder
-2. Copy the folder DuneIndex to your Dune Media Player. This folder is the Music Index Folder.
-		Name it whatever you like. Remember its location, as you need it at step 5.
-3. Copy the content of the folder scripts to your local MediaMonkey Scripts folder
-4. Change your Scripts.ini file. An example is enclosed below.
-5. Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations.
+2. Copy the content of the folder scripts to your local MediaMonkey Scripts folder
+3. Change your Scripts.ini file. An example is enclosed below.
+
+Index Folder
+------------
+To create the basic Index Folder, you have two options
+(A: use a default or B: create by using batch files).
+ 
+A. Use the default (download 10Mb)
+		1. download the file
+		2. unpack
+		3. copy the DuneIndex Folder to your Dune Media Player
+
+B. Create these by running a DOS batch script (needs ImageMagick)
+		1. goto subfolder CreateIndexFolder
+		2. edit _HitMe_CreateDuneIndex.cmd and fill in the ImageMagick folder
+		3. start _HitMe_CreateDuneIndex.cmd and wait for around 80s (on my Core2Duo 2.66Ghz)
+		4. copy the DuneIndex Folder to your Dune Media Player
+
+This DuneIndex folder is the Music Index Folder. Name it whatever you like.
+Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations. 			 
+
 
 Usage
 =====
@@ -44,6 +68,7 @@ Usage
 2. Select one or more albums in MediaMonkey
 3. Start the Script & press OK. The Index files will be generated and copied to the Dune Index Folder
 4. Open the Index Folder on your Dune, select your music and enjoy
+
 
 Features
 ========
@@ -57,9 +82,11 @@ Simple Layout
 Local and Network Music Source
 		One local and one network music source can be indexed by this script and accessed by the Dune
 
+
 Warning
 =======
 Every new Index File will overwrite existing Index Files (is it a bug or a feature?), so be aware.
+
 
 Scripts.ini (example)
 =====================
@@ -72,6 +99,7 @@ Description=Creates a Music Index for the Dune Media Player
 Language=VBScript
 ScriptType=0
 
+
 Needed
 ======
 - HDI Dune Media Streamer
@@ -80,11 +108,13 @@ Needed
 - Network access to the Dune, with a network map name
 - up-to-date MediaMonkey file library
 
+
 Tested on/with
 ==============
 - Dune Smart D1
 - Windows 7
 - MediaMonkey v4.06.1501
+
 
 Limitations
 ===========
