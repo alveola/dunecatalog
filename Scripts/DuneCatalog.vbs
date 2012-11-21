@@ -4,7 +4,8 @@ Option Explicit
 ' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
 ' Name    : DuneCatalog
-' Version : 1.4
+' Version : 1.5
+Dim dcVersion : dcVersion=1.5
 ' Date    : 2012-11-16
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
@@ -23,6 +24,7 @@ Dim DuneIndexFolder, DuneMusicFolderName, DuneDriveLetter, NetworkMusicFolderNam
 Dim SortAlbumsByDefault, DefaultOverwriteFiles, OpenAdvancedOptionsByDefault, ThoroughAlbumArtScanByDefault
 Dim arrAlbum(), StartTime, EndTime
 Dim GlassBubbleDefault
+Dim YearBeforeAlbumDefault
 
 const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe""" ' name of the IM Convert program
 
@@ -46,9 +48,11 @@ SortAlbumsByDefault = TRUE
 DefaultOverwriteFiles = TRUE
 ' Thorough AlbumArt Scan
 ThoroughAlbumArtScanByDefault = TRUE
-' Open lower Advanced Options panel by default
+' Glass Bubble default setting
 GlassBubbleDefault = FALSE
-' Round Corners default setting
+' Put Year before Album
+YearBeforeAlbumDefault = TRUE
+' Open lower Advanced Options panel by default
 OpenAdvancedOptionsByDefault = FALSE
 REM OpenAdvancedOptionsByDefault = TRUE
 ' Changes until here. Keep the rest unchanged, unless you know what you are doing.
@@ -56,7 +60,7 @@ REM OpenAdvancedOptionsByDefault = TRUE
 
 Dim lowform, highform, newheight
 lowform = 110
-highform = 340
+highform = 360
 newheight = lowform
 if OpenAdvancedOptionsByDefault Then newheight = highform
 
@@ -90,7 +94,7 @@ Sub OnStartUp() ' create form and controls
 	Form1.Common.SetRect 10, 100, 370, newheight
 	Form1.BorderStyle = 3
 	Form1.FormPosition = 4
-	Form1.Caption = "Dune Catalog Creator"
+	Form1.Caption = "Dune Catalog Creator" & " v" & dcVersion
 	SDB.Objects("Form1") = Form1
 	
 	Dim label1 : Set label1 = SDB.UI.Newlabel(Form1)
@@ -201,13 +205,20 @@ Sub OnStartUp() ' create form and controls
 		cbxGlassBubble.Common.Enabled = FALSE
 	End If
 	
+	Dim cbxSwapAlbumYear : Set cbxSwapAlbumYear = SDB.UI.NewCheckBox(Form1)
+	cbxSwapAlbumYear.Caption = "Put Year before Album"
+	cbxSwapAlbumYear.Common.SetRect 35, 270, 315, 20
+	cbxSwapAlbumYear.Checked = YearBeforeAlbumDefault
+	cbxSwapAlbumYear.Common.Hint = "Albums will be displayed in chronological order instead of alphabetical"
+	SDB.Objects("YearBeforeAlbum") = cbxSwapAlbumYear
+	
 	Dim lblInfo : Set lblInfo = SDB.UI.Newlabel(Form1)
-	lblInfo.Common.SetRect 140, 290, 315, 20
+	lblInfo.Common.SetRect 140, 310, 315, 20
 	lblInfo.Caption = "Keep mouse on any item for some more info"
 	lblInfo.Common.Hint = "Not on me, you Silly. I'm just a message."
 	
 	Dim ButtonOpen : Set ButtonOpen = SDB.UI.NewButton(Form1)
-	ButtonOpen.Common.SetRect 10, 285, 120, 20
+	ButtonOpen.Common.SetRect 10, 305, 120, 20
 	ButtonOpen.Caption = "Open Script in Editor"
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
 	Script.RegisterEvent ButtonOpen.Common, "OnClick", "ButtonOpenClick"
@@ -502,6 +513,7 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	Dim ArtistFolder, ArtistAlbumFolder, AlbumFolder, YearSubFolder, YearFolder, FirstFolder
 	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
+	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
 
 	' Create Artist Folder
 	If isVarAlbum(Arr(7, i)) Then
@@ -511,10 +523,14 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 			& Arr(2, i) & "\"
 	End If
 	ArtistFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistFolder))
-	ArtistAlbumFolder = ArtistFolder & Arr(3, i) & " (" & Arr(4, i) & ")\"
+	If cbxYearBeforeAlbum.checked Then
+		ArtistAlbumFolder = ArtistFolder & "\(" & Arr(4, i) & ") " & Arr(3, i) & "\"
+	Else
+		ArtistAlbumFolder = ArtistFolder & "\" & Arr(3, i) & " (" & Arr(4, i) & ")\"
+	End If
 	ArtistAlbumFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistAlbumFolder))
-	ArtistFolder = EndSlash(IndexFolder.Text) & ArtistFolder
-	ArtistAlbumFolder = EndSlash(IndexFolder.Text) & ArtistAlbumFolder
+	ArtistFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistFolder)
+	ArtistAlbumFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistAlbumFolder)
 	' this sequence seems a bit strange.
 	' ArtistFolder is needed later. When some steps are combined, an out of memory error
 	' occurred. This way it doesn't occur. My guess is that the last call:
@@ -529,7 +545,7 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 			& Arr(3, i) & " - " & Arr(2, i) & " (" & Arr(4, i) & ")\"
 	End If
 	AlbumFolder = AllBackSlashes(RemoveSpecialCharacters(AlbumFolder))
-	AlbumFolder = IndexFolder.Text & AlbumFolder
+	AlbumFolder = EndSlash(IndexFolder.Text) & AlbumFolder
 	
 	' Create Year Folder
 	If (Arr(4, i) = "") Then
@@ -554,7 +570,7 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 		YearFolder = "Years\" & YearSubFolder & "\" & Arr(3, i) & " - " & Arr(2, i) & "\"
 	End If
 	YearFolder = AllBackSlashes(RemoveSpecialCharacters(YearFolder))
-	YearFolder = IndexFolder.Text & YearFolder
+	YearFolder = EndSlash(IndexFolder.Text) & YearFolder
 	
 	FirstFolder = AlbumFolder
 	
