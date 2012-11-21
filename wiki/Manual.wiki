@@ -52,6 +52,29 @@ To create the basic Index Folder, you have two options (A: use a default or B: c
     
 This DuneIndex folder is the Music Index Folder. Name it whatever you like. Change the first lines of the script DuneCatalog.vbs to your network/folder names and locations.
 
+==Settings in DuneCatalog.vbs==
+
+In the GUI the settings can be made to find the music files and the location to write the Index to. To make these settings permanent, it is possible to change these in the script. It helps a lot to have some knowledge of the [http://dune-hd.com/support/misc/dune_folder_howto.txt "dune_folder.txt mechanism"] to understand these settings. Here is a screenshot to explain some folders and locations.
+
+http://dunecatalog.googlecode.com/svn/wiki/images/GUI-1.png
+
+The important settings are:
+|| *name in script* || *value in example* || *explanation* ||
+|| `DuneDriveLetter` || `J` || Drive Letter of the Dune in Windows ||
+|| `DuneMusicFolderName` || `storage_name://DuneHDD/` || Location of the local (Dune) Music files. ||
+|| `NetworkDriveLetter` || `U` || Drive Letter of the network music path in Windows ||
+|| `NetworkMusicFolderName` || `smb://bat/music/` || Location of the network Music files, as seen by the Dune. ||
+|| `DuneIndexFolder` || `J:\_index\music\` || Location of the music index on the Dune Player ||
+
+The two drive letters in rows 1 and 3 of the table are the easiest to understand. The music files on these drives can be indexed. Anything on another drive will not be indexed.
+
+In the example, the Dune harddisk share (`\\DUNE\DuneHDD`) is mapped to `J:`. One of the possibilities for the Dune to see music on its local drive is using `//storage_name/<share>`, so row 2 in this example is: `storage_name://DuneHDD/`.
+
+The network folder share (`\\bat\music\`) is mapped to `U:` This network location is accessed by the smb protocol. The Dune can see this with the next setting: `smb://bat/music/`, see row 4.
+
+The location of the index (row 5) is on the Dune at `J:\_index\music\`. It is also possible to create this on a local drive as well, which will speed up the creation of the index. The index can be moved to the Dune later.
+<br>*N.B. In v1.4 and earlier, this Index Location must end with a backslash. This is not needed in later versions.*
+
 = Usage =
 
  # Make sure your MediaMonkey Library is up-to-date
@@ -109,9 +132,3 @@ DuneCatalog does not do:
  * Album Art Scraping
  * Mass Tagging
  * Cover art can not be png (limitation by VBScript). jpg, bmp, gif is allowed
-
-= Version =
-1.2, 2012-11-06
-
-= Screenshot =
-http://dunecatalog.googlecode.com/svn/wiki/images/MediaMonkey_2012-11-06_22-25-34.png
