@@ -4,16 +4,15 @@ Option Explicit
 ' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
 ' Name    : DuneCatalog
-' Version : 1.5
-Dim dcVersion : dcVersion=1.5
-' Date    : 2012-11-16
+' Version : 1.6
+Dim dcVersion : dcVersion=1.6
+' Date    : 2012-11-23
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
 ' =============================================================================================
 '
 ' added:
-'  - Bubble Icons
-'  - some small bug fixes
+'
 '
 ' =============================================================================================
 ' Change next values to reflect your Windows/Network/Dune Setup
@@ -31,6 +30,7 @@ const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe""" '
 '
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_index\music\"
+REM DuneIndexFolder = "E:\temp\index"
 
 ' Location of the local (Dune) Music files. It is written as the internal storage path.
 DuneMusicFolderName = "storage_name://DuneHDD/"
@@ -41,10 +41,14 @@ DuneDriveLetter = "J"
 NetworkMusicFolderName = "smb://bat/music/"
 ' Drive Letter of the network music path in Windows
 NetworkDriveLetter = "U"
+REM NetworkMusicFolderName = "smb://bat/music/"
+REM ' Drive Letter of the network music path in Windows
+REM NetworkDriveLetter = "P"
 
 ' Some default checkboxes
 SortAlbumsByDefault = TRUE
 ' Overwrite checkbox is not implemented (yet)
+REM DefaultOverwriteFiles = FALSE
 DefaultOverwriteFiles = TRUE
 ' Thorough AlbumArt Scan
 ThoroughAlbumArtScanByDefault = TRUE
@@ -53,8 +57,8 @@ GlassBubbleDefault = FALSE
 ' Put Year before Album
 YearBeforeAlbumDefault = TRUE
 ' Open lower Advanced Options panel by default
-OpenAdvancedOptionsByDefault = FALSE
-REM OpenAdvancedOptionsByDefault = TRUE
+REM OpenAdvancedOptionsByDefault = FALSE
+OpenAdvancedOptionsByDefault = TRUE
 ' Changes until here. Keep the rest unchanged, unless you know what you are doing.
 ' =============================================================================================
 
@@ -223,7 +227,33 @@ Sub OnStartUp() ' create form and controls
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
 	Script.RegisterEvent ButtonOpen.Common, "OnClick", "ButtonOpenClick"
 	
+	REM Dim Browse : Set Browse = SDB.UI.NewButton(Form1)
+	REM Browse.Common.SetRect 10, 32, 70, 20
+	REM Browse.Caption = "..."
+	REM Browse.UseScript = Script.ScriptPath
+	REM Browse.OnClickFunc = "BrowseClick"
+	
 	Form1.Common.Visible = True
+End Sub
+
+Sub BrowseClick(ClickedBtn)
+	Dim objShell : Set objShell = CreateObject("Shell.Application")
+	Dim objFolder : Set objFolder = objShell.BrowseForFolder(0, "Example", 1, "c:\Programs")
+	SDB.MessageBox "folder: " & objFolder.title & " Path: " & objFolder.self.path, 2 , Array(4)
+
+  REM 'initialise
+  REM Dim dlg : Set dlg = SDB.CommonDialog
+  REM 'show dialog
+  REM dlg.DefaultExt = SDB.IniFile.StringValue("AdvancedReport","Extension")
+  REM dlg.Filter = "HTML (*.html)|*.html|ALL (*.*)|*.*"
+  REM dlg.Flags = cdlOFNOverwritePrompt + cdlOFNHideReadOnly + cdlOFNNoChangeDir
+  REM dlg.InitDir = "e:\temp\"
+  REM dlg.ShowOpen
+  REM 'check selection
+  REM If Not dlg.Ok Then Exit Sub
+  REM If dlg.FileName = "" Then Exit Sub
+  REM 'update setting
+  REM SDB.MessageBox dlg.FileName, 2, Array(4)
 End Sub
 
 Sub ButtonOptionsClick (Form1)
@@ -311,6 +341,8 @@ Sub ButtonGoClick (Form1)
 				newalbum = TRUE
 			End If
 			newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
+			REM SDB.MessageBox arrAlbum(5, index), 2, Array(4)
+			REM SDB.MessageBox newline, 2, Array(4)
 			if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
 			If newalbum Then
 				m3u = newline & chr(13) & chr(10)
@@ -329,6 +361,7 @@ Sub ButtonGoClick (Form1)
 					CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
 					m3uvar = ""
 				Else
+					REM SDB.MessageBox m3u, 2, Array(4)
 					CreateCatalogFolders arrAlbum, index, m3u, TRUE
 					m3u = ""
 				End If
@@ -337,6 +370,7 @@ Sub ButtonGoClick (Form1)
 					If isVarAlbum(arrAlbum(7, index)) Then
 						CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
 						m3uvar = ""
+						m3u = ""
 						newvaralbum = TRUE
 					Else
 						CreateCatalogFolders arrAlbum, index, m3u, TRUE
@@ -732,7 +766,8 @@ Sub WriteCoverArt(aArr, i, aPath)
 			CFN = fso.GetFileName(fileIdx)
 			If InStr(1, CFN,"front", 1) Then
 				CurrentRank = 6 * CurrentRank
-			ElseIf (InStr(1, CFN,"cover", 1) Or InStr(1, CFN,"front", 1)) Then
+			REM ElseIf (InStr(1, CFN,"cover", 1) Or InStr(1, CFN,"front", 1)) Then
+			ElseIf InStr(1, CFN,"cover", 1) Then
 				CurrentRank = 5 * CurrentRank
 			Else
 				CurrentRank = 1 * CurrentRank
@@ -974,16 +1009,21 @@ Sub AddTrack(aTrack)
 	arrAlbum(1, idxLast + 1) = aTrack.Title
 	
 	' Artist
-	If aTrack.ArtistName = "" Then
-		If isVarAlbum(aTrack.AlbumArtistName) Then
-			arrAlbum(2, idxLast + 1) = "Various"
-		Else	
-			arrAlbum(2, idxLast + 1) = "Unknown"
-		End If
+	If NOT aTrack.AlbumArtistName = "" Then
+		arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.AlbumArtistName, "artist") )
 	Else
-		arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.ArtistName, "artist") )
-		REM arrAlbum(2, idxLast + 1) = FolderFix(aTrack.ArtistName)
+		If aTrack.ArtistName = "" Then
+			If isVarAlbum(aTrack.AlbumArtistName) Then
+				arrAlbum(2, idxLast + 1) = "Various"
+			Else	
+				arrAlbum(2, idxLast + 1) = "Unknown"
+			End If
+		Else
+			arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.ArtistName, "artist") )
+			REM arrAlbum(2, idxLast + 1) = FolderFix(aTrack.ArtistName)
+		End If
 	End If
+
 	' See if AlbumName exists. If not, name it unknown
 	If aTrack.AlbumName = "" Then
 		arrAlbum(3, idxLast + 1) = "Unknown"
