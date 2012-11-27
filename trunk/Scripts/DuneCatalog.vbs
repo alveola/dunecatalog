@@ -4,8 +4,8 @@ Option Explicit
 ' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
 ' Name    : DuneCatalog
-' Version : 1.6
-Dim dcVersion : dcVersion=1.6
+' Version : 1.7
+Dim dcVersion : dcVersion=1.7
 ' Date    : 2012-11-23
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
@@ -30,7 +30,7 @@ const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe""" '
 '
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_index\music\"
-REM DuneIndexFolder = "E:\temp\index"
+REM DuneIndexFolder = "e:\temp\mm\index\"
 
 ' Location of the local (Dune) Music files. It is written as the internal storage path.
 DuneMusicFolderName = "storage_name://DuneHDD/"
@@ -41,9 +41,9 @@ DuneDriveLetter = "J"
 NetworkMusicFolderName = "smb://bat/music/"
 ' Drive Letter of the network music path in Windows
 NetworkDriveLetter = "U"
-REM NetworkMusicFolderName = "smb://bat/music/"
+REM NetworkMusicFolderName = "smb://tiger/temp/"
 REM ' Drive Letter of the network music path in Windows
-REM NetworkDriveLetter = "P"
+REM NetworkDriveLetter = "E"
 
 ' Some default checkboxes
 SortAlbumsByDefault = TRUE
@@ -341,8 +341,6 @@ Sub ButtonGoClick (Form1)
 				newalbum = TRUE
 			End If
 			newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
-			REM SDB.MessageBox arrAlbum(5, index), 2, Array(4)
-			REM SDB.MessageBox newline, 2, Array(4)
 			if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
 			If newalbum Then
 				m3u = newline & chr(13) & chr(10)
@@ -361,7 +359,6 @@ Sub ButtonGoClick (Form1)
 					CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
 					m3uvar = ""
 				Else
-					REM SDB.MessageBox m3u, 2, Array(4)
 					CreateCatalogFolders arrAlbum, index, m3u, TRUE
 					m3u = ""
 				End If
@@ -553,8 +550,7 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	If isVarAlbum(Arr(7, i)) Then
 		ArtistFolder = "Artists\" & DuneABCFolder("Various") & "\Various\"
 	Else
-		ArtistFolder = "Artists\" & DuneABCFolder(Arr(2, i)) & "\" _
-			& Arr(2, i) & "\"
+		ArtistFolder = "Artists\" & DuneABCFolder(Arr(2, i)) & "\" & Arr(2, i) & "\"
 	End If
 	ArtistFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistFolder))
 	If cbxYearBeforeAlbum.checked Then
@@ -730,7 +726,6 @@ Sub WriteCoverArt(aArr, i, aPath)
 	
 	' Music Source Path
 	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
-	REM sdb.messagebox aArr(5, i), 2, Array(4)
 	
 	Dim File : Set File = fso.GetFile(aArr(5, i))
 	Dim FilePath : FilePath = File.ParentFolder
@@ -803,11 +798,14 @@ Sub WriteCoverArt(aArr, i, aPath)
 		End If
 		If cbxGlassBubble.checked Then MakeGlassBubble(aPath)
 	Else' Simply Copying existing jpg
+		
 		Dim AlbumArtFile
 		AlbumArtFile = EndSlash(FilePath) & "front.jpg"
 		If fso.FileExists(AlbumArtFile) Then
 			If FitImage(AlbumArtFile) Then
 				fso.CopyFile AlbumArtFile, aPath
+				set fso = Nothing
+				set files = Nothing
 				Exit Sub
 			End If
 		End If
@@ -815,6 +813,8 @@ Sub WriteCoverArt(aArr, i, aPath)
 		If fso.FileExists(AlbumArtFile) Then
 			If FitImage(AlbumArtFile) Then
 				fso.CopyFile AlbumArtFile, aPath
+				set fso = Nothing
+				set files = Nothing
 				Exit Sub
 			End If
 		End If
@@ -822,6 +822,8 @@ Sub WriteCoverArt(aArr, i, aPath)
 		If fso.FileExists(AlbumArtFile) Then
 			If FitImage(AlbumArtFile) Then
 				fso.CopyFile AlbumArtFile, aPath
+				set fso = Nothing
+				set files = Nothing
 				Exit Sub
 			End If
 		End If
@@ -1032,10 +1034,6 @@ Sub AddTrack(aTrack)
 		REM arrAlbum(3, idxLast + 1) = FolderFix(aTrack.AlbumName)
 	End If
 	
-	REM sdb.messagebox arrAlbum(2, idxLast + 1), 2, Array(4)
-	REM sdb.messagebox aTrack.ArtistName, 2, Array(4)
-	REM sdb.messagebox SwapPrefix(aTrack.ArtistName, "artist"), 2, Array(4)
-	
 	' See if Year exists
 	If aTrack.Year = "" Then
 		arrAlbum(4, idxLast + 1) = "0000"
@@ -1076,7 +1074,6 @@ Function SwapPrefix(aName, aType)
 		IF UCase(Left(aName,3))="LA " Then aTmp = Right(aName,Len(aName)-3) & ", " & Left(aName, 2)
 		IF UCase(Left(aName,4))="LES " Then aTmp = Right(aName,Len(aName)-4) & ", " & Left(aName, 3)
 	End IF
-	REM SDB.messagebox aName, 2, Array(4)
 	SwapPrefix = aTmp
 End Function
 
@@ -1280,7 +1277,6 @@ Sub resizeImage(sourceFile, toWidth, toHeight, destinationFile)
 end Sub
 
 Sub MakeGlassBubble(sourceFile)
-	REM SDB.MessageBox sourceFile, 2, Array(4)
 	Dim imgWidth, imgHeight, img
 	Dim Command
 	' Load ImageMagick
@@ -1311,7 +1307,6 @@ Sub MakeGlassBubble(sourceFile)
 		& " ( +clone -flop ) -compose Multiply -composite " _
 		& " -background Gray50 -alpha Shape " & chr(34) & tgt1 & chr(34)
 	
-	REM SDB.MessageBox Command, 2, Array(4)
 	wsh.run Command, 7, true
 	
 	Command = strConv & chr(34) & tgt1 & chr(34) _
@@ -1323,7 +1318,6 @@ Sub MakeGlassBubble(sourceFile)
 		& " -channel RGB -compose multiply -composite " _
 		& " +channel +compose -chop 1x1 " & chr(34) & tgt2 & chr(34)
 	
-	REM SDB.MessageBox Command, 2, Array(4)
 	wsh.run Command, 7, true
 	
 	Command = strConv & chr(34) & sourceFile & chr(34) _
@@ -1331,14 +1325,12 @@ Sub MakeGlassBubble(sourceFile)
 		& " ( -clone 0,1 -alpha Opaque -compose Hardlight -composite ) " _
 		& "	-delete 0 -compose In -composite " & chr(34) & tgt3 & chr(34)
 	
-	REM SDB.MessageBox Command, 2, Array(4)
 	wsh.run Command, 7, true
 
 	' add crop to original dim (remove extra 1px right and bottom)
 	Command = strConv & chr(34) & tgt3 & chr(34) _
 		& " -crop " & imgWidth & "x" & imgHeight & "+0+0 " & chr(34) & tgt3 & chr(34)
 	
-	REM SDB.MessageBox Command, 2, Array(4)
 	wsh.run Command, 7, true
 	
 	FSO.DeleteFile sourceFile
