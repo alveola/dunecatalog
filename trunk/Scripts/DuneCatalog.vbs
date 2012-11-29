@@ -1,6 +1,6 @@
 Option Explicit
 '
-' =============================================================================================
+' ==========================================================================================
 ' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
 ' Name    : DuneCatalog
@@ -9,14 +9,14 @@ Dim dcVersion : dcVersion=1.7
 ' Date    : 2012-11-23
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
-' =============================================================================================
+' ==========================================================================================
 '
 ' added:
 '
 '
-' =============================================================================================
+' ==========================================================================================
 ' Change next values to reflect your Windows/Network/Dune Setup
-' =============================================================================================
+' ==========================================================================================
 '
 
 Dim DuneIndexFolder, DuneMusicFolderName, DuneDriveLetter, NetworkMusicFolderName, NetworkDriveLetter
@@ -303,7 +303,9 @@ Sub ButtonGoClick (Form1)
 	Dim m3u, m3uvar, msg	
 	Dim musicfolder, netmusicfolder, tf, ntf, loc
 	Dim cbxSort, index, newline, newalbum, newvaralbum
-	
+	Dim AlbumFolder
+	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
+
 	' get data from form:
 	Set musicfolder = SDB.Objects("MusicFolder")
 	tf = SwapSlashes(musicfolder.Text)
@@ -323,6 +325,8 @@ Sub ButtonGoClick (Form1)
 	Progress.MaxValue = maxFiles
 	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")  
 	
+	newalbum = TRUE
+	
 	For index = 0 to maxFiles ' Loop through All Songs
 		Progress.Text = "Processing File " & index+1 & " of " & maxFiles+1 & ": " & arrAlbum(3, index) & " by " & arrAlbum(2, index)
 		' Is the Album on the Dune or the accesible network?
@@ -334,52 +338,78 @@ Sub ButtonGoClick (Form1)
 			loc = ntf
 			CorrectSourceDir = TRUE
 		End If
-		
 		If CorrectSourceDir Then
-			' create .list.m3u
-			if index = 0 Then
-				newalbum = TRUE
-			End If
-			newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
-			if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
+			REM ' create .list.m3u
+			REM if index = 0 Then
+				REM newalbum = TRUE
+			REM End If
+			REM newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
+			REM if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
 			If newalbum Then
-				m3u = newline & chr(13) & chr(10)
+				' Create Album Folder
+				AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, index)) & "\" _
+					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")\"
+				AlbumFolder = AllBackSlashes(RemoveSpecialCharacters(AlbumFolder))
+				AlbumFolder = EndSlash(IndexFolder.Text) & AlbumFolder
+				GeneratePath AlbumFolder
+				' Create .icon file
+				newalbum = FALSE
+			End If
+			WriteTrack index, AlbumFolder, loc
+			REM If newalbum Then
+				REM m3u = newline & chr(13) & chr(10)
+				REM WriteTrack index
+				REM ' create first track in album dir
+				REM ' create first track in songs dir
+				REM newalbum = FALSE
+			REM Else
+				REM m3u = m3u & newline & chr(13) & chr(10)
+				REM WriteTrack index
+				REM ' create new track in album dir
+				REM ' create new track in songs dir
+			REM End If
+			REM If newvaralbum Then
+				REM m3uvar = newline & chr(13) & chr(10)
+				REM newvaralbum = FALSE
+			REM Else
+				REM If isVarAlbum(arrAlbum(7, index)) Then m3uvar = m3uvar & newline & chr(13) & chr(10)
+			REM End If
+			If (index = maxFiles) Then
+				WriteAlbum index
 				newalbum = FALSE
 			Else
-				m3u = m3u & newline & chr(13) & chr(10)
-			End If
-			If newvaralbum Then
-				m3uvar = newline & chr(13) & chr(10)
-				newvaralbum = FALSE
-			Else
-				If isVarAlbum(arrAlbum(7, index)) Then m3uvar = m3uvar & newline & chr(13) & chr(10)
-			End If
-			If index = maxFiles Then ' End of list
-				If isVarAlbum(arrAlbum(7, index)) Then
-					CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
-					m3uvar = ""
-				Else
-					CreateCatalogFolders arrAlbum, index, m3u, TRUE
-					m3u = ""
-				End If
-			Else
-				If arrAlbum(6, index) < arrAlbum(6, index+1) Then ' End of Current ArtistAlbum
-					If isVarAlbum(arrAlbum(7, index)) Then
-						CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
-						m3uvar = ""
-						m3u = ""
-						newvaralbum = TRUE
-					Else
-						CreateCatalogFolders arrAlbum, index, m3u, TRUE
-						m3u = ""
-						newalbum = TRUE
-					End If
-				Else
-					If isVarAlbum(arrAlbum(7, index)) Then
-						m3u = ""
-					End If
+				If (arrAlbum(6, index) < arrAlbum(6, index+1)) Then ' End of list or end of album
+					WriteAlbum index
+					newalbum = FALSE
 				End If
 			End If
+			REM If index = maxFiles Then ' End of list
+			
+				REM If isVarAlbum(arrAlbum(7, index)) Then
+					REM CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
+					REM m3uvar = ""
+				REM Else
+					REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
+					REM m3u = ""
+				REM End If
+			REM Else
+				REM If arrAlbum(6, index) < arrAlbum(6, index+1) Then ' End of Current ArtistAlbum
+					REM If isVarAlbum(arrAlbum(7, index)) Then
+						REM CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
+						REM m3uvar = ""
+						REM m3u = ""
+						REM newvaralbum = TRUE
+					REM Else
+						REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
+						REM m3u = ""
+						REM newalbum = TRUE
+					REM End If
+				REM Else
+					REM If isVarAlbum(arrAlbum(7, index)) Then
+						REM m3u = ""
+					REM End If
+				REM End If
+			REM End If
 			Progress.Increase
 		End If
 	Next
@@ -629,6 +659,61 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	
 	CopyFolderFiles ArtistAlbumFolder, ArtistFolder
 End Sub
+
+Sub WriteTrack(i, Folder, source)
+	Dim filename, trackfolder
+	Dim filecontent, iconscalefactor
+
+	' get icon scalefactor
+	iconscalefactor = 1
+	filecontent = _
+	"media_url=" & source & SwapSlashes(SkipDrive(arrAlbum(5, i))) & chr(10) & _
+	"media_action=play" & chr(10) & _
+	"icon_path=../../../../.service/.empty.png" & chr(10) & _
+	"icon_scale_factor=" & iconscalefactor & chr(10) & _
+	"icon_valign=center" & chr(10) & _
+	"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(10) & _
+	"paint_icon_selection_box=yes" & chr(10) & _
+	"paint_path_box=no" & chr(10) & _
+	"paint_help_line=no" & chr(10) & _
+	"background_order=before_all" & chr(10) & _
+	"background_path=../../../../.service/.listbackground.jpg" & chr(13) & chr(10)
+	
+	'create folder
+	trackfolder = arrAlbum(0, i) & " - " & arrAlbum(1, i)
+	trackfolder = FolderFix(trackfolder)
+
+	 
+	' Compose dft
+
+	' createfolder
+	If HasSpecialCharacter(trackfolder) Then trackfolder = CharSwap(trackfolder)
+	REM sdb.messagebox Folder & trackfolder, 2, array(4)
+	GeneratePath Folder & trackfolder
+
+	' create file
+	Dim dftfso : 	Set dftfso = fso.CreateTextFile(Folder & trackfolder & "\dune_folder.txt" ,True, False)
+		' False creates ascii file, which Dune likes/needs
+	
+	' Write dft
+	dftfso.Write(filecontent)
+	dftfso.Close ' Create DuneFolder.txt file
+End Sub
+
+Sub WriteAlbum(i)
+	' write -- All Files -- folder
+	' finish all files
+	' create artist file & folders
+	' copy to year
+	End Sub
+
+REM Function preZero(num, digits)
+	REM Dim i, a
+	REM For i = 0 to digits - len(num) - 1
+		REM a = a & "0"
+	REM Next
+	REM preZero = a & num
+REM End Function
 
 Function ImageDimension(ImageFile)
 	Dim returnvalue(2)
@@ -1001,9 +1086,9 @@ Sub AddTrack(aTrack)
 	' [2] Resize the array, preserving the current content
 	ReDim Preserve arrAlbum(7, idxLast + 1)
 	' [3] Add the new element to the array
-	if aTrack.DiscNumberStr <> 0 Then discno = aTrack.DiscNumberStr & "."
-
-	For i = 0 to 3 - len(aTrack.TrackOrderStr)
+	if aTrack.DiscNumberStr <> "" Then discno = aTrack.DiscNumberStr & "."
+	
+	For i = 0 to 1 - len(aTrack.TrackOrderStr)
 		preZero = preZero & "0"
 	Next
 	
@@ -1015,11 +1100,11 @@ Sub AddTrack(aTrack)
 		arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.AlbumArtistName, "artist") )
 	Else
 		If aTrack.ArtistName = "" Then
-			If isVarAlbum(aTrack.AlbumArtistName) Then
-				arrAlbum(2, idxLast + 1) = "Various"
-			Else	
-				arrAlbum(2, idxLast + 1) = "Unknown"
-			End If
+			REM If isVarAlbum(aTrack.AlbumArtistName) Then
+				REM arrAlbum(2, idxLast + 1) = "Various"
+			REM Else	
+			arrAlbum(2, idxLast + 1) = "Unknown"
+			REM End If
 		Else
 			arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.ArtistName, "artist") )
 			REM arrAlbum(2, idxLast + 1) = FolderFix(aTrack.ArtistName)
@@ -1051,6 +1136,7 @@ Function FolderFix(aFolder)
 	If Right(aFolder, 2) = ".." Then a = a & "_"' cannot end with a dot
 	If Right(aFolder, 1) = "." Then a = Left(a,Len(a)-1)' a single dot will be removed
 	a = Replace(a, "/", "_")' a slash here is a folder/subfolder separator elsewhere
+	a = Replace(a, "?", "_")' a slash here is a folder/subfolder separator elsewhere
 	FolderFix = a
 End Function
 
@@ -1077,18 +1163,18 @@ Function SwapPrefix(aName, aType)
 	SwapPrefix = aTmp
 End Function
 
-Function isVarAlbum(AlbumArtist)
-	isVarAlbum = FALSE
-	If UCase(Left(AlbumArtist, 7)) = "VARIOUS" Then
-		isVarAlbum = TRUE
-	Else
-		If Left(AlbumArtist, 2) = "VA" Then	
-			isVarAlbum = TRUE' must be uppercase by itself
-		Else
-			If UCase(Left(AlbumArtist, 4)) = "V.A." Then	isVarAlbum = TRUE'
-		End If
-	End If
-End Function
+REM Function isVarAlbum(AlbumArtist)
+	REM isVarAlbum = FALSE
+	REM If UCase(Left(AlbumArtist, 7)) = "VARIOUS" Then
+		REM isVarAlbum = TRUE
+	REM Else
+		REM If Left(AlbumArtist, 2) = "VA" Then	
+			REM isVarAlbum = TRUE' must be uppercase by itself
+		REM Else
+			REM If UCase(Left(AlbumArtist, 4)) = "V.A." Then	isVarAlbum = TRUE'
+		REM End If
+	REM End If
+REM End Function
 
 Sub Btn2Click
 	' used in development only for quick reloading script
