@@ -30,7 +30,6 @@ const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe""" '
 '
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_index\music\"
-REM DuneIndexFolder = "e:\temp\mm\index\"
 
 ' Location of the local (Dune) Music files. It is written as the internal storage path.
 DuneMusicFolderName = "storage_name://DuneHDD/"
@@ -41,13 +40,10 @@ DuneDriveLetter = "J"
 NetworkMusicFolderName = "smb://bat/music/"
 ' Drive Letter of the network music path in Windows
 NetworkDriveLetter = "U"
-REM NetworkMusicFolderName = "smb://tiger/temp/"
-REM ' Drive Letter of the network music path in Windows
-REM NetworkDriveLetter = "E"
 
 ' Some default checkboxes
 SortAlbumsByDefault = TRUE
-' Overwrite checkbox is not implemented (yet)
+' Overwrite checkbox
 REM DefaultOverwriteFiles = FALSE
 DefaultOverwriteFiles = TRUE
 ' Thorough AlbumArt Scan
@@ -57,8 +53,8 @@ GlassBubbleDefault = FALSE
 ' Put Year before Album
 YearBeforeAlbumDefault = TRUE
 ' Open lower Advanced Options panel by default
-REM OpenAdvancedOptionsByDefault = FALSE
-OpenAdvancedOptionsByDefault = TRUE
+OpenAdvancedOptionsByDefault = FALSE
+REM OpenAdvancedOptionsByDefault = TRUE
 ' Changes until here. Keep the rest unchanged, unless you know what you are doing.
 ' =============================================================================================
 
@@ -227,12 +223,6 @@ Sub OnStartUp() ' create form and controls
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
 	Script.RegisterEvent ButtonOpen.Common, "OnClick", "ButtonOpenClick"
 	
-	REM Dim Browse : Set Browse = SDB.UI.NewButton(Form1)
-	REM Browse.Common.SetRect 10, 32, 70, 20
-	REM Browse.Caption = "..."
-	REM Browse.UseScript = Script.ScriptPath
-	REM Browse.OnClickFunc = "BrowseClick"
-	
 	Form1.Common.Visible = True
 End Sub
 
@@ -240,20 +230,6 @@ Sub BrowseClick(ClickedBtn)
 	Dim objShell : Set objShell = CreateObject("Shell.Application")
 	Dim objFolder : Set objFolder = objShell.BrowseForFolder(0, "Example", 1, "c:\Programs")
 	SDB.MessageBox "folder: " & objFolder.title & " Path: " & objFolder.self.path, 2 , Array(4)
-
-  REM 'initialise
-  REM Dim dlg : Set dlg = SDB.CommonDialog
-  REM 'show dialog
-  REM dlg.DefaultExt = SDB.IniFile.StringValue("AdvancedReport","Extension")
-  REM dlg.Filter = "HTML (*.html)|*.html|ALL (*.*)|*.*"
-  REM dlg.Flags = cdlOFNOverwritePrompt + cdlOFNHideReadOnly + cdlOFNNoChangeDir
-  REM dlg.InitDir = "e:\temp\"
-  REM dlg.ShowOpen
-  REM 'check selection
-  REM If Not dlg.Ok Then Exit Sub
-  REM If dlg.FileName = "" Then Exit Sub
-  REM 'update setting
-  REM SDB.MessageBox dlg.FileName, 2, Array(4)
 End Sub
 
 Sub ButtonOptionsClick (Form1)
@@ -300,9 +276,10 @@ Sub ButtonGoClick (Form1)
 	StartTime = Timer()
 	
 	Dim maxFiles, CorrectSourceDir
-	Dim m3u, m3uvar, msg	
+	Dim albumdft, trackindex
+	REM Dim m3uvar, msg	
 	Dim musicfolder, netmusicfolder, tf, ntf, loc
-	Dim cbxSort, index, newline, newalbum, newvaralbum
+	Dim cbxSort, index, newline, newalbum', newvaralbum
 	Dim AlbumFolder
 	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
 
@@ -323,7 +300,6 @@ Sub ButtonGoClick (Form1)
 	
 	Dim Progress : Set Progress = SDB.Progress
 	Progress.MaxValue = maxFiles
-	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")  
 	
 	newalbum = TRUE
 	
@@ -339,13 +315,8 @@ Sub ButtonGoClick (Form1)
 			CorrectSourceDir = TRUE
 		End If
 		If CorrectSourceDir Then
-			REM ' create .list.m3u
-			REM if index = 0 Then
-				REM newalbum = TRUE
-			REM End If
-			REM newline = loc & SwapSlashes(SkipDrive(arrAlbum(5, index)))
-			REM if HasSpecialCharacter(newline) Then newline = CharSwap(newline) ' ascii/ansi/utf-8 conversion
 			If newalbum Then
+				trackindex = 0
 				' Create Album Folder
 				AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, index)) & "\" _
 					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")\"
@@ -355,61 +326,20 @@ Sub ButtonGoClick (Form1)
 				' Create .icon file
 				newalbum = FALSE
 			End If
-			WriteTrack index, AlbumFolder, loc
-			REM If newalbum Then
-				REM m3u = newline & chr(13) & chr(10)
-				REM WriteTrack index
-				REM ' create first track in album dir
-				REM ' create first track in songs dir
-				REM newalbum = FALSE
-			REM Else
-				REM m3u = m3u & newline & chr(13) & chr(10)
-				REM WriteTrack index
-				REM ' create new track in album dir
-				REM ' create new track in songs dir
-			REM End If
-			REM If newvaralbum Then
-				REM m3uvar = newline & chr(13) & chr(10)
-				REM newvaralbum = FALSE
-			REM Else
-				REM If isVarAlbum(arrAlbum(7, index)) Then m3uvar = m3uvar & newline & chr(13) & chr(10)
-			REM End If
+			
+			AddNextTrack Albumdft, index, loc, trackindex
+			trackindex = trackindex + 1
 			If (index = maxFiles) Then
-				WriteAlbum index
-				newalbum = FALSE
+				WriteAlbum Albumdft, index, AlbumFolder, loc, trackindex
+				newalbum = TRUE
+				trackindex = 0
 			Else
 				If (arrAlbum(6, index) < arrAlbum(6, index+1)) Then ' End of list or end of album
-					WriteAlbum index
-					newalbum = FALSE
+					WriteAlbum Albumdft, index, AlbumFolder, loc, trackindex
+					newalbum = TRUE
+					trackindex = 0
 				End If
 			End If
-			REM If index = maxFiles Then ' End of list
-			
-				REM If isVarAlbum(arrAlbum(7, index)) Then
-					REM CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
-					REM m3uvar = ""
-				REM Else
-					REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
-					REM m3u = ""
-				REM End If
-			REM Else
-				REM If arrAlbum(6, index) < arrAlbum(6, index+1) Then ' End of Current ArtistAlbum
-					REM If isVarAlbum(arrAlbum(7, index)) Then
-						REM CreateCatalogFolders arrAlbum, index, m3uvar, TRUE
-						REM m3uvar = ""
-						REM m3u = ""
-						REM newvaralbum = TRUE
-					REM Else
-						REM CreateCatalogFolders arrAlbum, index, m3u, TRUE
-						REM m3u = ""
-						REM newalbum = TRUE
-					REM End If
-				REM Else
-					REM If isVarAlbum(arrAlbum(7, index)) Then
-						REM m3u = ""
-					REM End If
-				REM End If
-			REM End If
 			Progress.Increase
 		End If
 	Next
@@ -571,7 +501,6 @@ End Function
 
 Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	' Creates Folder Structure and Copies Files into it.
-	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	Dim ArtistFolder, ArtistAlbumFolder, AlbumFolder, YearSubFolder, YearFolder, FirstFolder
 	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
 	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
@@ -660,60 +589,131 @@ Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
 	CopyFolderFiles ArtistAlbumFolder, ArtistFolder
 End Sub
 
-Sub WriteTrack(i, Folder, source)
-	Dim filename, trackfolder
-	Dim filecontent, iconscalefactor
-
-	' get icon scalefactor
-	iconscalefactor = 1
-	filecontent = _
-	"media_url=" & source & SwapSlashes(SkipDrive(arrAlbum(5, i))) & chr(10) & _
-	"media_action=play" & chr(10) & _
-	"icon_path=../../../../.service/.empty.png" & chr(10) & _
-	"icon_scale_factor=" & iconscalefactor & chr(10) & _
-	"icon_valign=center" & chr(10) & _
-	"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(10) & _
-	"paint_icon_selection_box=yes" & chr(10) & _
-	"paint_path_box=no" & chr(10) & _
-	"paint_help_line=no" & chr(10) & _
-	"background_order=before_all" & chr(10) & _
-	"background_path=../../../../.service/.listbackground.jpg" & chr(13) & chr(10)
-	
-	'create folder
-	trackfolder = arrAlbum(0, i) & " - " & arrAlbum(1, i)
-	trackfolder = FolderFix(trackfolder)
-
-	 
-	' Compose dft
-
-	' createfolder
-	If HasSpecialCharacter(trackfolder) Then trackfolder = CharSwap(trackfolder)
-	REM sdb.messagebox Folder & trackfolder, 2, array(4)
-	GeneratePath Folder & trackfolder
-
-	' create file
-	Dim dftfso : 	Set dftfso = fso.CreateTextFile(Folder & trackfolder & "\dune_folder.txt" ,True, False)
-		' False creates ascii file, which Dune likes/needs
-	
-	' Write dft
-	dftfso.Write(filecontent)
-	dftfso.Close ' Create DuneFolder.txt file
+Sub AddNextTrack(filecontent, i, source, ti)
+	' create & write file
+	filecontent = filecontent & _
+	"item." & ti & ".caption=" & arrAlbum(0, i) & " - " & arrAlbum(1, i) & chr(13) & chr(10) & _
+	"item." & ti & ".media_url=" & source & SwapSlashes(SkipDrive(arrAlbum(5, i))) & chr(13) & chr(10) & _
+	"item." & ti & ".media_action=play" & chr(13) & chr(10) & _
+	"item." & ti & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
+	"item." & ti & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+	"item." & ti & ".icon_valign=center" & chr(13) & chr(10)
 End Sub
 
-Sub WriteAlbum(i)
-	' write -- All Files -- folder
-	' finish all files
-	' create artist file & folders
-	' copy to year
-	End Sub
+Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, trackindex
+	Dim filename
+	Dim iconscalefactor
+	Dim ArtistFolder, ArtistAlbumFolder, YearSubFolder, YearFolder, AlbumFolder
+	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
+	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
+	
+	' Create .icon.jpg
+	If OKtoOverwrite(Folder & ".icon.jpg") Then WriteCoverArt arrAlbum, i, Folder & ".icon.jpg" ' Cover art
+	
+	If OKtoOverwrite(Folder  & "\dune_folder.txt") Then
+		Dim MusicFolder : Set MusicFolder = fso.GetFile(arrAlbum(5, i))
+		Dim ImDim, ScaleFactor
+		ImDim=ImageDimension(Folder & ".icon.jpg")
+		ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
 
-REM Function preZero(num, digits)
-	REM Dim i, a
-	REM For i = 0 to digits - len(num) - 1
-		REM a = a & "0"
-	REM Next
-	REM preZero = a & num
-REM End Function
+		filecontent = filecontent & _
+			"item." & ti & ".caption=-- " & arrAlbum(3, i) & " --" & chr(13) & chr(10) & _
+			"item." & ti & ".media_url=" & source & SwapSlashes(SkipDrive(EndSlash(MusicFolder.ParentFolder))) & chr(13) & chr(10) & _
+			"item." & ti & ".media_action=play" & chr(13) & chr(10) & _
+			"item." & ti & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
+			"item." & ti & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+			"item." & ti & ".icon_valign=center" & chr(13) & chr(10)
+			
+		filecontent = filecontent & _
+			"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(13) & chr(10) & _
+			"background_order=first" & chr(13) & chr(10) & _
+			"background_path=../../../.service/.listbackground.jpg" & chr(13) & chr(10) & _
+			"background_order=before_all" & chr(13) & chr(10) & _
+			"paint_path_box=no" & chr(13) & chr(10) & _
+			"paint_help_line=no" & chr(13) & chr(10) & _
+			"icon_path=.icon.jpg" & chr(13) & chr(10) & _
+			"icon_scale_factor=" & ScaleFactor & chr(13) & chr(10) & _
+			"use_icon_view=yes" & chr(13) & chr(10) & _
+			"icon_valign=center" & chr(13) & chr(10) & _
+			"paint_icons=no" & chr(13) & chr(10) & _
+			"paint_icon_selection_box=yes" & chr(13) & chr(10) & _
+			"num_cols=2" & chr(13) & chr(10) & _
+			"num_rows=10" & chr(13) & chr(10) & _
+			"caption_font_size=normal" & chr(13) & chr(10)
+		
+		' create & write file
+		Dim dftfso : 	Set dftfso = fso.CreateTextFile(Folder & "\dune_folder.txt" ,True, False)
+		dftfso.Write(filecontent)
+		dftfso.Close ' Create DuneFolder.txt file
+	End If
+	
+	' Create ArtistAlbum folder
+	ArtistFolder = "Artists\" & DuneABCFolder(arrAlbum(2, i)) & "\" & arrAlbum(2, i) & "\"
+	ArtistFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistFolder))
+	If cbxYearBeforeAlbum.checked Then
+		ArtistAlbumFolder = ArtistFolder & "\(" & arrAlbum(4, i) & ") " & arrAlbum(3, i) & "\"
+	Else
+		ArtistAlbumFolder = ArtistFolder & "\" & arrAlbum(3, i) & " (" & arrAlbum(4, i) & ")\"
+	End If
+	ArtistAlbumFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistAlbumFolder))
+	ArtistFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistFolder)
+	
+	' Create Artist dft
+	If OKtoOverwrite(ArtistFolder & "dune_folder.txt") Then
+		ArtistAlbumFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistAlbumFolder)
+		GeneratePath ArtistAlbumFolder
+		
+		AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, i)) & "\" _
+			& arrAlbum(3, i) & " - " & arrAlbum(2, i) & " (" & arrAlbum(4, i) & ")\"
+		
+		CreateArtistFolderIcon Folder, ArtistFolder
+	End If
+
+	' Create ArtistAlbum dft
+	If OktoOverwrite(ArtistAlbumFolder & "dune_folder.txt") Then
+		filecontent = _
+			"paint_scrollbar=no" & chr(13) & chr(10) & _
+			"paint_path_box=no" & chr(13) & chr(10) & _
+			"paint_help_line=no" & chr(13) & chr(10) & _
+			"icon_path=../../../../" & SwapSlashes(AlbumFolder) & ".icon.jpg" & chr(13) & chr(10) & _
+			"icon_scale_factor=" & Scalefactor & chr(13) & chr(10) & _
+			"use_icon_view=yes" & chr(13) & chr(10) & _
+			"icon_valign=center" & chr(13) & chr(10) & _
+			"media_action=browse" & chr(13) & chr(10) & _
+			"media_url=../../../../" & SwapSlashes(AlbumFolder) & chr(13) & chr(10)
+			'
+		Set dftfso = fso.CreateTextFile(ArtistAlbumFolder & "dune_folder.txt" ,True, False)
+		dftfso.Write(filecontent)
+		dftfso.Close ' Create DuneFolder.txt file
+	End If
+	
+	' Create Year Folder & write dft
+	If (arrAlbum(4, i) = "") Then
+		YearSubFolder = "Unknown\Empty"
+	ElseIf isNumeric(arrAlbum(4, i)) Then
+		If CInt(arrAlbum(4, i)) < 1950 Then
+			If CInt(arrAlbum(4, i)) = 0 Then
+				YearSubFolder = "0000-1949\0000"
+			Else
+				YearSubFolder = "0000-1949\" & arrAlbum(4, i)
+			End If
+		Else
+			YearSubFolder = DuneYearFolder(arrAlbum(4, i)) & "\" & arrAlbum(4, i)
+		End If
+	Else
+		YearSubFolder = "Unknown\" &  arrAlbum(4, i)
+	End If
+	YearFolder = "Years\" & YearSubFolder & "\" & arrAlbum(3, i) & " - " & arrAlbum(2, i) & "\"
+	YearFolder = AllBackSlashes(RemoveSpecialCharacters(YearFolder))
+	YearFolder = EndSlash(IndexFolder.Text) & YearFolder
+	If OKtoOverwrite(YearFolder & "dune_folder.txt") Then
+		GeneratePath YearFolder
+		Set dftfso = fso.CreateTextFile(YearFolder & "dune_folder.txt" ,True, False)
+		dftfso.Write(filecontent)
+		dftfso.Close
+	End If
+	filecontent = ""
+End Sub
 
 Function ImageDimension(ImageFile)
 	Dim returnvalue(2)
@@ -775,8 +775,6 @@ Function RemoveSpecialCharacters(FolderName)
 	a = Replace(a, ">", "]")
 	a = Replace(a, "|", "_")
 	a = Replace(a, """", "_")
-	REM a = Replace(a, "/", "_")
-	REM a = Replace(a, "\", "_")
 	RemoveSpecialCharacters = a
 End Function
 
@@ -792,6 +790,7 @@ Function GeneratePath(pFolderPath)
   GeneratePath = False
   If Not fso.FolderExists(pFolderPath) Then
     If GeneratePath(fso.GetParentFolderName(pFolderPath)) Then
+			REM sdb.messagebox pFolderPath, 2, Array(4)
       GeneratePath = True
       fso.CreateFolder(pFolderPath)
     End If
@@ -846,7 +845,6 @@ Sub WriteCoverArt(aArr, i, aPath)
 			CFN = fso.GetFileName(fileIdx)
 			If InStr(1, CFN,"front", 1) Then
 				CurrentRank = 6 * CurrentRank
-			REM ElseIf (InStr(1, CFN,"cover", 1) Or InStr(1, CFN,"front", 1)) Then
 			ElseIf InStr(1, CFN,"cover", 1) Then
 				CurrentRank = 5 * CurrentRank
 			Else
@@ -928,15 +926,12 @@ End Function
 
 Function OKtoOverwrite(aFile)
 	Dim OverwriteFile : Set OverwriteFile = SDB.Objects("OverwriteFiles")
-  REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	OKtoOverwrite = TRUE
 	' don't overwrite if file exists and overwrite is not allowed
 	If fso.FileExists(aFile) And Not OverwriteFile.Checked Then OKtoOverwrite = FALSE
 End Function
 
 Sub CopyFiles(src, tgt)
-	' Copy files from source to target
-  REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	' copy m3u
 	If OKtoOverwrite(tgt & ".list.m3u") Then fso.CopyFile src & ".list.m3u", tgt
 	' copy png
@@ -948,8 +943,48 @@ End Sub
 Sub CopyFolderFiles(albumF, artistF)
 	' Copy files from AlbumFolder to Artist (sub) Folder to have a nice icon on screen here as well.
 	' Is the Default Icon Exists and a newe one is present it will be overwritten.
+	Dim CreateArtistIcon : CreateArtistIcon = FALSE
+	Dim DefFile, TgtFile
+	Dim UseIM : Set UseIM=SDB.Objects("DeepImageScan")
+
+	If not fso.FileExists(artistF & ".icon.jpg") Then
+		CreateArtistIcon = TRUE
+	Else
+		Set DefFile = fso.GetFile(DCScriptFilesFolder & "cover.jpg")
+		Set TgtFile = fso.GetFile(artistF & ".icon.jpg")
+		If (DefFile.Size = TgtFile.Size) AND (DefFile.DateLastModified = TgtFile.DateLastModified) Then
+			CreateArtistIcon = TRUE
+		End If
+	End If
 	
-  REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
+	If CreateArtistIcon Then
+		If fso.FileExists(albumF & ".icon.jpg") Then
+			Dim h2, w2, ScaleFactor
+			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile albumF & ".icon.jpg", artistF
+			If UseIM.Checked Then
+				Dim img : Set img = CreateObject("ImageMagickObject.MagickImage.1")' Load ImageMagick
+				w2 = img.Identify ("-format", "%w", albumF & ".icon.jpg")
+				h2 = img.Identify ("-format", "%h", albumF & ".icon.jpg")
+			Else
+				Dim oPic : set oPic=loadpicture(albumF & ".icon.jpg")
+				'height and width properties return in himetric (0.01mm)
+				'numeric factors are just to convert them to pixel
+				h2=round(oPic.height/2540*96)
+				w2=round(oPic.width/2540*96)
+				set oPic=nothing
+			End If
+			ScaleFactor = Round(350/Max(h2, w2),3)
+			WriteDuneSubFolder EndSlash(artistF) & "dune_folder.txt", ScaleFactor
+		Else
+			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile DCScriptFilesFolder & ".icon.jpg", artistF
+			If OKtoOverwrite(artistF & "dune_folder.txt") Then fso.CopyFile DCScriptFilesFolder & "SFdune_folder.txt", artistF & "dune_folder.txt"
+		End If
+	End If
+End Sub
+
+Sub CreateArtistFolderIcon(albumF, artistF)
+	' Creates Artist Icon
+	' If the Default Icon Exists and a new one is present it will be overwritten.
 	Dim CreateArtistIcon : CreateArtistIcon = FALSE
 	Dim DefFile, TgtFile
 	Dim UseIM : Set UseIM=SDB.Objects("DeepImageScan")
@@ -1100,14 +1135,9 @@ Sub AddTrack(aTrack)
 		arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.AlbumArtistName, "artist") )
 	Else
 		If aTrack.ArtistName = "" Then
-			REM If isVarAlbum(aTrack.AlbumArtistName) Then
-				REM arrAlbum(2, idxLast + 1) = "Various"
-			REM Else	
 			arrAlbum(2, idxLast + 1) = "Unknown"
-			REM End If
 		Else
 			arrAlbum(2, idxLast + 1) = FolderFix( SwapPrefix(aTrack.ArtistName, "artist") )
-			REM arrAlbum(2, idxLast + 1) = FolderFix(aTrack.ArtistName)
 		End If
 	End If
 
@@ -1116,7 +1146,6 @@ Sub AddTrack(aTrack)
 		arrAlbum(3, idxLast + 1) = "Unknown"
 	Else
 		arrAlbum(3, idxLast + 1) = FolderFix( SwapPrefix(aTrack.AlbumName, "album") )
-		REM arrAlbum(3, idxLast + 1) = FolderFix(aTrack.AlbumName)
 	End If
 	
 	' See if Year exists
@@ -1162,19 +1191,6 @@ Function SwapPrefix(aName, aType)
 	End IF
 	SwapPrefix = aTmp
 End Function
-
-REM Function isVarAlbum(AlbumArtist)
-	REM isVarAlbum = FALSE
-	REM If UCase(Left(AlbumArtist, 7)) = "VARIOUS" Then
-		REM isVarAlbum = TRUE
-	REM Else
-		REM If Left(AlbumArtist, 2) = "VA" Then	
-			REM isVarAlbum = TRUE' must be uppercase by itself
-		REM Else
-			REM If UCase(Left(AlbumArtist, 4)) = "V.A." Then	isVarAlbum = TRUE'
-		REM End If
-	REM End If
-REM End Function
 
 Sub Btn2Click
 	' used in development only for quick reloading script
@@ -1275,17 +1291,26 @@ Sub PrintAlbumArray(aTracks)
 	SDB.MessageBox msg, mtInformation, Array(mbOk)
 End Sub
 
-Sub WriteDuneFolder(filename, scalefactor)
-	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
+Sub WriteAlbumFolderdft(filename, scalefactor)
 	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
-	Dim filecontent : filecontent = "media_url=.list.m3u" & chr(10) & _
-	"paint_scrollbar=no" & chr(10) & _
-	"paint_path_box=no" & chr(10) & _
-	"paint_help_line=no" & chr(10) & _
-	"icon_path=.icon.jpg" & chr(10) & _
-	"icon_scale_factor=" & scalefactor & chr(10) & _
-	"use_icon_view=yes" & chr(10) & _
-	"icon_valign=center" & chr(13) & chr(10)
+	Dim filecontent
+	filecontent = _
+	"icon_path=.icon.jpg" & chr(13) & chr(10) & _
+	"icon_sel_path=.icon.jpg" & chr(13) & chr(10) & _
+	"icon_scale_factor=" & Scalefactor & chr(13) & chr(10) & _
+	"use_icon_view=yes" & chr(13) & chr(10) & _
+	"icon_valign=center" & chr(13) & chr(10) & _
+	"background_path=../../../.service/.listbackground.jpg" & chr(13) & chr(10) & _
+	"paint_content_box_background=no" & chr(13) & chr(10) & _
+	"paint_path_box=no" & chr(13) & chr(10) & _
+	"paint_help_line=no" & chr(13) & chr(10) & _
+	"paint_scrollbar=yes" & chr(13) & chr(10) & _
+	"paint_captions=yes" & chr(13) & chr(10) & _
+	"num_cols=2" & chr(13) & chr(10) & _
+	"num_rows=10" & chr(13) & chr(10) & _
+	"paint_icon_selection_box=yes" & chr(13) & chr(10) & _
+	"paint_icons=yes" & chr(13) & chr(10) & _
+	"caption_font_size=normal" & chr(13) & chr(10)
 	
 	dftfso.Write(filecontent)
 	dftfso.Close ' Create DuneFolder.txt file
@@ -1294,27 +1319,28 @@ End Sub
 Sub WriteDuneSubFolder(filename, scalefactor)
 	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
 	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
-	Dim filecontent : filecontent = "icon_path=.icon.jpg" & chr(10) & _
-	"icon_scale_factor=" & scalefactor & chr(10) & _
-	"background_path=../../../.service/.listbackground.jpg" & chr(10) & _
-	"use_icon_view=yes" & chr(10) & _
-	"icon_valign=center" & chr(10) & _
-	"background_x=0" & chr(10) & _
-	"background_y=0" & chr(10) & _
-	"content_box_x=0" & chr(10) & _
-	"content_box_Y=0" & chr(10) & _
-	"paint_path_box=no" & chr(10) & _
-	"paint_help_line=no" & chr(10) & _
-	"paint_scrollbar=yes" & chr(10) & _
-	"paint_captions=no" & chr(10) & _
-	"num_cols=4" & chr(10) & _
-	"num_rows=2" & chr(10) & _
-	"paint_icon_selection_box=yes" & chr(10) & _
-	"paint_captions=yes" & chr(10) & _
-	"paint_icons=yes" & chr(10) & _
-	"icon_top=7" & chr(10) & _
-	"icon_bottom=100" & chr(10) & _
-	"caption_font_size=normal" & chr(13) & chr(10)
+	Dim filecontent : filecontent = _
+		"icon_path=" & ".icon.jpg" & chr(13) & chr(10) & _
+		"icon_scale_factor=" & ScaleFactor & chr(13) & chr(10) & _
+		"background_path=../../../.service/.listbackground.jpg" & chr(13) & chr(10) & _
+		"use_icon_view=yes" & chr(13) & chr(10) & _
+		"icon_valign=center" & chr(13) & chr(10) & _
+		"background_x=0" & chr(13) & chr(10) & _
+		"background_y=0" & chr(13) & chr(10) & _
+		"content_box_x=0" & chr(13) & chr(10) & _
+		"content_box_Y=0" & chr(13) & chr(10) & _
+		"paint_path_box=no" & chr(13) & chr(10) & _
+		"paint_help_line=no" & chr(13) & chr(10) & _
+		"paint_scrollbar=yes" & chr(13) & chr(10) & _
+		"paint_captions=no" & chr(13) & chr(10) & _
+		"num_cols=4" & chr(13) & chr(10) & _
+		"num_rows=2" & chr(13) & chr(10) & _
+		"paint_icon_selection_box=yes" & chr(13) & chr(10) & _
+		"paint_captions=yes" & chr(13) & chr(10) & _
+		"paint_icons=yes" & chr(13) & chr(10) & _
+		"icon_top=7" & chr(13) & chr(10) & _
+		"icon_bottom=100" & chr(13) & chr(10) & _
+		"caption_font_size=normal" & chr(13) & chr(10)
 	
 	dftfso.Write(filecontent)
 	dftfso.Close ' Create DuneFolder.txt file
@@ -1373,7 +1399,6 @@ Sub MakeGlassBubble(sourceFile)
 	imgHeight = img.Identify ("-format", "%h", sourceFile)
 	
 	Dim wsh, FilePath
-	REM Dim FSO : Set FSO = CreateObject("Scripting.FileSystemObject")
 	Set wsh = CreateObject("Wscript.Shell")
 	FilePath = FSO.GetParentFolderName(sourceFile)
 	
