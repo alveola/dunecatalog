@@ -321,9 +321,6 @@ Sub ButtonGoClick (Form1)
 				AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, index)) & "\" _
 					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")\"
 				AlbumFolder = AllBackSlashes(RemoveSpecialCharacters(AlbumFolder))
-				AlbumFolder = EndSlash(IndexFolder.Text) & AlbumFolder
-				GeneratePath AlbumFolder
-				' Create .icon file
 				newalbum = FALSE
 			End If
 			
@@ -352,14 +349,17 @@ Sub ButtonGoClick (Form1)
 End Sub
 
 Function HasSpecialCharacter(iString)
-	Dim i, a
+	Dim i, a, n
+	a = FALSE
 	For i=1 To Len(iString)
-		If (Asc(Mid(iString,i,1)) < 128) Then
-			a = FALSE
-		Else
-			a = TRUE
-			Exit For
-		End If
+		n = Asc(Mid(iString,i,1))
+		Select Case True
+			Case (n >= 128), (n=47), (n=92), (n=63), (n=37), _
+				(n=42), (n=58), (n=124), (n=34), (n=60), (n=62)
+				a = TRUE
+			' /  \  ?  %  *  :  |   "  <  >
+			' 47 92 63 37 42 58 124 34 60 62 
+		End Select
 	Next
 	HasSpecialCharacter = a
 End Function
@@ -499,96 +499,6 @@ Function DuneABCFolder(SubFolder)
 	if ((SFNumber > 48) AND (SFNumber < 58)) Then 	DuneABCFolder = "27_#"
 End Function
 
-Sub CreateCatalogFolders(Arr, i, m3ufile, isAlbum)
-	' Creates Folder Structure and Copies Files into it.
-	Dim ArtistFolder, ArtistAlbumFolder, AlbumFolder, YearSubFolder, YearFolder, FirstFolder
-	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
-	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
-
-	' Create Artist Folder
-	If isVarAlbum(Arr(7, i)) Then
-		ArtistFolder = "Artists\" & DuneABCFolder("Various") & "\Various\"
-	Else
-		ArtistFolder = "Artists\" & DuneABCFolder(Arr(2, i)) & "\" & Arr(2, i) & "\"
-	End If
-	ArtistFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistFolder))
-	If cbxYearBeforeAlbum.checked Then
-		ArtistAlbumFolder = ArtistFolder & "\(" & Arr(4, i) & ") " & Arr(3, i) & "\"
-	Else
-		ArtistAlbumFolder = ArtistFolder & "\" & Arr(3, i) & " (" & Arr(4, i) & ")\"
-	End If
-	ArtistAlbumFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistAlbumFolder))
-	ArtistFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistFolder)
-	ArtistAlbumFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistAlbumFolder)
-	' this sequence seems a bit strange.
-	' ArtistFolder is needed later. When some steps are combined, an out of memory error
-	' occurred. This way it doesn't occur. My guess is that the last call:
-	' "folder = dunefolder & folder" does also some kind of typecasting ? Anyway, it works.
-	
-	' Create Album Folder
-	If isVarAlbum(Arr(7, i)) Then
-		AlbumFolder = "Albums\" & DuneABCFolder(Arr(3, i)) & "\" _
-			& Arr(3, i) & " - Various (" & Arr(4, i) & ")\"
-	Else
-		AlbumFolder = "Albums\" & DuneABCFolder(Arr(3, i)) & "\" _
-			& Arr(3, i) & " - " & Arr(2, i) & " (" & Arr(4, i) & ")\"
-	End If
-	AlbumFolder = AllBackSlashes(RemoveSpecialCharacters(AlbumFolder))
-	AlbumFolder = EndSlash(IndexFolder.Text) & AlbumFolder
-	
-	' Create Year Folder
-	If (Arr(4, i) = "") Then
-		YearSubFolder = "Unknown\Empty"
-	ElseIf isNumeric(Arr(4, i)) Then
-		If CInt(Arr(4, i)) < 1950 Then
-			If CInt(Arr(4, i)) = 0 Then
-				YearSubFolder = "0000-1949\0000"
-			Else
-				YearSubFolder = "0000-1949\" & Arr(4, i)
-			End If
-		Else
-			YearSubFolder = DuneYearFolder(Arr(4, i)) & "\" & Arr(4, i)
-		End If
-	Else
-		YearSubFolder = "Unknown\" &  Arr(4, i)
-	End If
-		
-	If isVarAlbum(Arr(7, i)) Then
-		YearFolder = "Years\" & YearSubFolder & "\" & Arr(3, i) & " - Various\"
-	Else
-		YearFolder = "Years\" & YearSubFolder & "\" & Arr(3, i) & " - " & Arr(2, i) & "\"
-	End If
-	YearFolder = AllBackSlashes(RemoveSpecialCharacters(YearFolder))
-	YearFolder = EndSlash(IndexFolder.Text) & YearFolder
-	
-	FirstFolder = AlbumFolder
-	
-	' Create Files
-	Dim m3ufilename, m3ufso, TargetArt
-	GeneratePath FirstFolder' Create First Path
-	m3ufilename = EndSlash(FirstFolder) & ".list.m3u"
-	If OKtoOverwrite(m3ufilename) Then
-		Set m3ufso = fso.CreateTextFile(m3ufilename ,True, False) ' False creates ascii file, which Dune likes/needs
-		m3ufso.Write(m3ufile)
-		m3ufso.Close ' Create m3u file
-	End If
-	TargetArt = FirstFolder & ".icon.jpg"
-	If OKtoOverwrite(TargetArt) Then WriteCoverArt Arr, i, TargetArt ' Cover art
-	
-	Dim ImDim, ScaleFactor
-	ImDim=ImageDimension(TargetArt)
-	ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
-	If OKtoOverwrite(EndSlash(FirstFolder) & "dune_folder.txt") Then WriteDuneFolder EndSlash(FirstFolder) & "dune_folder.txt", ScaleFactor
-	
-	GeneratePath YearFolder
-	CopyFiles FirstFolder, YearFolder
-	
-	Call GeneratePath(ArtistAlbumFolder)
-	CopyFiles FirstFolder, ArtistAlbumFolder
-	
-	CopyFolderFiles ArtistAlbumFolder, ArtistFolder
-End Sub
-
 Sub AddNextTrack(filecontent, i, source, ti)
 	' create & write file
 	filecontent = filecontent & _
@@ -601,21 +511,23 @@ Sub AddNextTrack(filecontent, i, source, ti)
 End Sub
 
 Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, trackindex
-	Dim filename
-	Dim iconscalefactor
+	Dim filename, iconscalefactor
 	Dim ArtistFolder, ArtistAlbumFolder, YearSubFolder, YearFolder, AlbumFolder
 	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
 	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
+
+	AlbumFolder = EndSlash(IndexFolder.Text) & Folder
+	GeneratePath AlbumFolder
 	
 	' Create .icon.jpg
-	If OKtoOverwrite(Folder & ".icon.jpg") Then WriteCoverArt arrAlbum, i, Folder & ".icon.jpg" ' Cover art
+	If OKtoOverwrite(AlbumFolder & ".icon.jpg") Then WriteCoverArt arrAlbum, i, AlbumFolder & ".icon.jpg" ' Cover art
 	
-	If OKtoOverwrite(Folder  & "\dune_folder.txt") Then
+	If OKtoOverwrite(AlbumFolder & "\dune_folder.txt") Then
 		Dim MusicFolder : Set MusicFolder = fso.GetFile(arrAlbum(5, i))
 		Dim ImDim, ScaleFactor
-		ImDim=ImageDimension(Folder & ".icon.jpg")
+		ImDim=ImageDimension(AlbumFolder & ".icon.jpg")
 		ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
-
+		
 		filecontent = filecontent & _
 			"item." & ti & ".caption=-- " & arrAlbum(3, i) & " --" & chr(13) & chr(10) & _
 			"item." & ti & ".media_url=" & source & SwapSlashes(SkipDrive(EndSlash(MusicFolder.ParentFolder))) & chr(13) & chr(10) & _
@@ -623,7 +535,7 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 			"item." & ti & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 			"item." & ti & ".icon_scale_factor=1" & chr(13) & chr(10) & _
 			"item." & ti & ".icon_valign=center" & chr(13) & chr(10)
-			
+		
 		filecontent = filecontent & _
 			"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(13) & chr(10) & _
 			"background_order=first" & chr(13) & chr(10) & _
@@ -642,7 +554,7 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 			"caption_font_size=normal" & chr(13) & chr(10)
 		
 		' create & write file
-		Dim dftfso : 	Set dftfso = fso.CreateTextFile(Folder & "\dune_folder.txt" ,True, False)
+		Dim dftfso : 	Set dftfso = fso.CreateTextFile(AlbumFolder & "\dune_folder.txt" ,True, False)
 		dftfso.Write(filecontent)
 		dftfso.Close ' Create DuneFolder.txt file
 	End If
@@ -663,24 +575,23 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		ArtistAlbumFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistAlbumFolder)
 		GeneratePath ArtistAlbumFolder
 		
-		AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, i)) & "\" _
-			& arrAlbum(3, i) & " - " & arrAlbum(2, i) & " (" & arrAlbum(4, i) & ")\"
-		
-		CreateArtistFolderIcon Folder, ArtistFolder
+		CreateArtistFolderIcon AlbumFolder, ArtistFolder
 	End If
-
+	
+	If HasSpecialCharacter(Folder) Then Folder = CharSwap(Folder)
+	
 	' Create ArtistAlbum dft
 	If OktoOverwrite(ArtistAlbumFolder & "dune_folder.txt") Then
 		filecontent = _
 			"paint_scrollbar=no" & chr(13) & chr(10) & _
 			"paint_path_box=no" & chr(13) & chr(10) & _
 			"paint_help_line=no" & chr(13) & chr(10) & _
-			"icon_path=../../../../" & SwapSlashes(AlbumFolder) & ".icon.jpg" & chr(13) & chr(10) & _
+			"icon_path=../../../../" & SwapSlashes(Folder) & ".icon.jpg" & chr(13) & chr(10) & _
 			"icon_scale_factor=" & Scalefactor & chr(13) & chr(10) & _
 			"use_icon_view=yes" & chr(13) & chr(10) & _
 			"icon_valign=center" & chr(13) & chr(10) & _
 			"media_action=browse" & chr(13) & chr(10) & _
-			"media_url=../../../../" & SwapSlashes(AlbumFolder) & chr(13) & chr(10)
+			"media_url=../../../../" & SwapSlashes(Folder) & chr(13) & chr(10)
 			'
 		Set dftfso = fso.CreateTextFile(ArtistAlbumFolder & "dune_folder.txt" ,True, False)
 		dftfso.Write(filecontent)
@@ -1166,6 +1077,7 @@ Function FolderFix(aFolder)
 	If Right(aFolder, 1) = "." Then a = Left(a,Len(a)-1)' a single dot will be removed
 	a = Replace(a, "/", "_")' a slash here is a folder/subfolder separator elsewhere
 	a = Replace(a, "?", "_")' a slash here is a folder/subfolder separator elsewhere
+	a = Replace(a, ":", "_")' a slash here is a folder/subfolder separator elsewhere
 	FolderFix = a
 End Function
 
