@@ -66,8 +66,8 @@ COPY MAINdune_folder.txt %MAIN%\dune_folder.txt
 MKDIR %MAIN%\.service
 ATTRIB -h .listbackground.jpg
 COPY .listbackground.jpg %MAIN%\.service
-ATTRIB -h .empty.jpg
-COPY .empty.jpg %MAIN%\.service
+ATTRIB -h .empty.png
+COPY .empty.png %MAIN%\.service
 
 :: 3. Clean up ::::::::::::::::::::::::::::::::::::::::::::::::::::
 
