@@ -349,17 +349,14 @@ Sub ButtonGoClick (Form1)
 End Sub
 
 Function HasSpecialCharacter(iString)
-	Dim i, a, n
-	a = FALSE
+	Dim i, a
 	For i=1 To Len(iString)
-		n = Asc(Mid(iString,i,1))
-		Select Case True
-			Case (n >= 128), (n=47), (n=92), (n=63), (n=37), _
-				(n=42), (n=58), (n=124), (n=34), (n=60), (n=62)
-				a = TRUE
-			' /  \  ?  %  *  :  |   "  <  >
-			' 47 92 63 37 42 58 124 34 60 62 
-		End Select
+		If (Asc(Mid(iString,i,1)) < 128) Then
+			a = FALSE
+		Else
+			a = TRUE
+			Exit For
+		End If
 	Next
 	HasSpecialCharacter = a
 End Function
@@ -501,9 +498,16 @@ End Function
 
 Sub AddNextTrack(filecontent, i, source, ti)
 	' create & write file
+	Dim caption, mediaurl
+	caption = arrAlbum(0, i) & " - " & arrAlbum(1, i)
+	If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
+
+	mediaurl = arrAlbum(5, i)
+	If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
+	mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
 	filecontent = filecontent & _
-	"item." & ti & ".caption=" & arrAlbum(0, i) & " - " & arrAlbum(1, i) & chr(13) & chr(10) & _
-	"item." & ti & ".media_url=" & source & SwapSlashes(SkipDrive(arrAlbum(5, i))) & chr(13) & chr(10) & _
+	"item." & ti & ".caption=" & caption & chr(13) & chr(10) & _
+	"item." & ti & ".media_url=" & mediaurl & chr(13) & chr(10) & _
 	"item." & ti & ".media_action=play" & chr(13) & chr(10) & _
 	"item." & ti & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 	"item." & ti & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -527,10 +531,18 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		Dim ImDim, ScaleFactor
 		ImDim=ImageDimension(AlbumFolder & ".icon.jpg")
 		ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
+
+		Dim caption, mediaurl
+		caption = arrAlbum(3, i)
+		If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
+
+		mediaurl = EndSlash(MusicFolder.ParentFolder)
+		If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
+		mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
 		
 		filecontent = filecontent & _
-			"item." & ti & ".caption=-- " & arrAlbum(3, i) & " --" & chr(13) & chr(10) & _
-			"item." & ti & ".media_url=" & source & SwapSlashes(SkipDrive(EndSlash(MusicFolder.ParentFolder))) & chr(13) & chr(10) & _
+			"item." & ti & ".caption=-- " & caption & " --" & chr(13) & chr(10) & _
+			"item." & ti & ".media_url=" & mediaurl & chr(13) & chr(10) & _
 			"item." & ti & ".media_action=play" & chr(13) & chr(10) & _
 			"item." & ti & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 			"item." & ti & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -1076,8 +1088,8 @@ Function FolderFix(aFolder)
 	If Right(aFolder, 2) = ".." Then a = a & "_"' cannot end with a dot
 	If Right(aFolder, 1) = "." Then a = Left(a,Len(a)-1)' a single dot will be removed
 	a = Replace(a, "/", "_")' a slash here is a folder/subfolder separator elsewhere
-	a = Replace(a, "?", "_")' a slash here is a folder/subfolder separator elsewhere
-	a = Replace(a, ":", "_")' a slash here is a folder/subfolder separator elsewhere
+	a = Replace(a, "?", "_")'
+	a = Replace(a, ":", "_")' 
 	FolderFix = a
 End Function
 
