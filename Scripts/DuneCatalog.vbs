@@ -6,13 +6,19 @@ Option Explicit
 ' Name    : DuneCatalog
 ' Version : 1.7
 Dim dcVersion : dcVersion=1.7
-' Date    : 2012-11-23
+' Date    : 2012-12-09
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
 ' ==========================================================================================
 '
 ' added:
+' - playing individual tracks is now possible
+' - play albums gapless as 'slideshow'
 '
+' changed:
+' - index structure is changed:
+'    * less files are written and copied
+'    * script is a bit faster. 
 '
 ' ==========================================================================================
 ' Change next values to reflect your Windows/Network/Dune Setup
@@ -27,7 +33,6 @@ Dim YearBeforeAlbumDefault
 
 const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe""" ' name of the IM Convert program
 
-'
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_index\music\"
 
@@ -316,7 +321,7 @@ Sub ButtonGoClick (Form1)
 		End If
 		If CorrectSourceDir Then
 			If newalbum Then
-				trackindex = 0
+				trackindex = 1
 				' Create Album Folder
 				AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, index)) & "\" _
 					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")\"
@@ -329,12 +334,12 @@ Sub ButtonGoClick (Form1)
 			If (index = maxFiles) Then
 				WriteAlbum Albumdft, index, AlbumFolder, loc, trackindex
 				newalbum = TRUE
-				trackindex = 0
+				trackindex = 1
 			Else
 				If (arrAlbum(6, index) < arrAlbum(6, index+1)) Then ' End of list or end of album
 					WriteAlbum Albumdft, index, AlbumFolder, loc, trackindex
 					newalbum = TRUE
-					trackindex = 0
+					trackindex = 1
 				End If
 			End If
 			Progress.Increase
@@ -499,9 +504,11 @@ End Function
 Sub AddNextTrack(filecontent, i, source, ti)
 	' create & write file
 	Dim caption, mediaurl
-	caption = arrAlbum(0, i) & " - " & arrAlbum(1, i)
+	caption = arrAlbum(0, i) & "." & arrAlbum(1, i)' include number
+	REM caption = arrAlbum(1, i)' exclude number
+	
 	If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
-
+	
 	mediaurl = arrAlbum(5, i)
 	If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
 	mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
@@ -519,7 +526,8 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 	Dim ArtistFolder, ArtistAlbumFolder, YearSubFolder, YearFolder, AlbumFolder
 	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
 	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
-
+	Dim ti0
+	
 	AlbumFolder = EndSlash(IndexFolder.Text) & Folder
 	GeneratePath AlbumFolder
 	
@@ -531,22 +539,23 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		Dim ImDim, ScaleFactor
 		ImDim=ImageDimension(AlbumFolder & ".icon.jpg")
 		ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
-
+		
 		Dim caption, mediaurl
 		caption = arrAlbum(3, i)
 		If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
-
+		
 		mediaurl = EndSlash(MusicFolder.ParentFolder)
 		If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
 		mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
 		
+		ti0 = 0
 		filecontent = filecontent & _
-			"item." & ti & ".caption=-- " & caption & " --" & chr(13) & chr(10) & _
-			"item." & ti & ".media_url=" & mediaurl & chr(13) & chr(10) & _
-			"item." & ti & ".media_action=play" & chr(13) & chr(10) & _
-			"item." & ti & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
-			"item." & ti & ".icon_scale_factor=1" & chr(13) & chr(10) & _
-			"item." & ti & ".icon_valign=center" & chr(13) & chr(10)
+			"item." & ti0 & ".caption=-- " & caption & " --" & chr(13) & chr(10) & _
+			"item." & ti0 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
+			"item." & ti0 & ".media_action=play" & chr(13) & chr(10) & _
+			"item." & ti0 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
+			"item." & ti0 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+			"item." & ti0 & ".icon_valign=center" & chr(13) & chr(10)
 		
 		filecontent = filecontent & _
 			"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(13) & chr(10) & _
@@ -563,8 +572,13 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 			"paint_icon_selection_box=yes" & chr(13) & chr(10) & _
 			"num_cols=2" & chr(13) & chr(10) & _
 			"num_rows=10" & chr(13) & chr(10) & _
-			"caption_font_size=normal" & chr(13) & chr(10)
-		
+			"caption_font_size=normal" & chr(13) & chr(10) & _
+			"sort_field=unsorted" & chr(13) & chr(10) & _
+			"sort_dir = asc" & chr(13) & chr(10)
+			'sort_field:
+			' unsorted takes sort order of virtual item number
+			' name sortes by name
+
 		' create & write file
 		Dim dftfso : 	Set dftfso = fso.CreateTextFile(AlbumFolder & "\dune_folder.txt" ,True, False)
 		dftfso.Write(filecontent)
@@ -733,13 +747,13 @@ Sub WriteCoverArt(aArr, i, aPath)
 	
 	' Music Source Path
 	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
-	
 	Dim File : Set File = fso.GetFile(aArr(5, i))
 	Dim FilePath : FilePath = File.ParentFolder
 	Dim UseIM : Set UseIM=SDB.Objects("DeepImageScan")
 	Dim Imdim, MaxDim, CFN, CFE, SrcCoverArt
 	Dim BestRank, CurrentRank, BestIm, BestAction, CurAction
 	Dim cbxGlassBubble : Set cbxGlassBubble = SDB.Objects("RoundC")
+	Dim SCA	
 	
 	If UseIM.Checked Then' Advanced Ranking AlbumArt, using IM
 		' get image files in folder (jpg, png)
@@ -794,10 +808,14 @@ Sub WriteCoverArt(aArr, i, aPath)
 			fso.CopyFile BestIM, aPath
 			SrcCoverArt = EndSlash(fso.GetParentFolderName(BestIM)) & "cover.jpg"
 			If (not fso.FileExists(SrcCoverArt)) Then Call fso.CopyFile(aPath, SrcCoverArt)
+			set SCA = fso.GetFile(SrcCoverArt)
+			SCA.Attributes = 0
 		ElseIf BestAction = 2 Then
 			resizeImage BestIM, 350, 350, aPath
 			SrcCoverArt = EndSlash(fso.GetParentFolderName(BestIM)) & "cover.jpg"
 			If (not fso.FileExists(SrcCoverArt)) Then Call fso.CopyFile(aPath, SrcCoverArt)
+			set SCA = fso.GetFile(SrcCoverArt)
+			SCA.Attributes = 0
 		Else
 			' default "anonymous" albumart
 			fso.CopyFile DCScriptFilesFolder & "\cover.jpg", aPath
@@ -865,7 +883,7 @@ End Sub
 
 Sub CopyFolderFiles(albumF, artistF)
 	' Copy files from AlbumFolder to Artist (sub) Folder to have a nice icon on screen here as well.
-	' Is the Default Icon Exists and a newe one is present it will be overwritten.
+	' Is the Default Icon Exists and a new one is present it will be overwritten.
 	Dim CreateArtistIcon : CreateArtistIcon = FALSE
 	Dim DefFile, TgtFile
 	Dim UseIM : Set UseIM=SDB.Objects("DeepImageScan")
