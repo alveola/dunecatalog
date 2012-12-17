@@ -16,6 +16,7 @@ mkdir %SF%\2010-2019
 mkdir %SF%\other
 
 :: create Year Folders
+mkdir %SF%\0000-1949\0000
 mkdir %SF%\0000-1949\1910
 mkdir %SF%\0000-1949\1911
 mkdir %SF%\0000-1949\1912
@@ -126,5 +127,3 @@ mkdir %SF%\2010-2019\2016
 mkdir %SF%\2010-2019\2017
 mkdir %SF%\2010-2019\2018
 mkdir %SF%\2010-2019\2019
-
-mkdir %SF%\other\0000
