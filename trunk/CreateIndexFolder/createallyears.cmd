@@ -5,6 +5,7 @@ set SF=.\
 IF NOT AA==A%1A set SF=%1
 
 :: create Year Folders
+call createyear 0000 %SF%\0000-1949\0000
 call createyear 1910 %SF%\0000-1949\1910
 call createyear 1911 %SF%\0000-1949\1911
 call createyear 1912 %SF%\0000-1949\1912

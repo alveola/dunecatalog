@@ -43,7 +43,14 @@ call createallyears %MAIN%\Years
 
 :: Some specials
 call createspecial *?#@ %MAIN%\Years\other 
-call createyear 0000 %SF%\0000-1949\0000
+::call createyear 0000 %SF%\0000-1949\0000
+
+::create tracks
+echo Create Artist Folders and Icons
+set BUTTONCOL=YELLOW
+call createalldirs %MAIN%\Tracks
+call createallletters %MAIN%\Tracks
+call createfolder Tracks %MAIN%\Tracks
 
 :: 2. Dune_folder.txt :::::::::::::::::::::::::::::::::::::::::::::
 
@@ -60,6 +67,10 @@ COPY 3dune_folder.txt %MAIN%\Years\0000-1949\1910\dune_folder.txt
 COPY decadesdune_folder.txt %MAIN%\Years\0000-1949\dune_folder.txt
 CALL copyYEARtxt.cmd %MAIN%\Years
 COPY yearsdune_folder.txt %MAIN%\Years\dune_folder.txt
+
+COPY 4dune_folder.txt %MAIN%\Tracks\01_A\dune_folder.txt
+CALL copyABCtxt.cmd %MAIN%\Tracks
+COPY tracksdune_folder.txt %MAIN%\Tracks\dune_folder.txt
 
 COPY MAINdune_folder.txt %MAIN%\dune_folder.txt
 
