@@ -550,7 +550,7 @@ Sub AddNextTrack(filecontent, i, source, ti)
 		If (Right(TwoChars,1) = " ") Then TwoChars = Left(TwoChars,1)
 		T2 = EndSlash(DuneABCFolder(arrAlbum(1, i)) & "\" & TwoChars)
 		REM sdb.messagebox T2, 2, array(4)
-		TrackFolder = T2 & arrAlbum(1, i) & " - " &	arrAlbum(2, i)
+		TrackFolder = T2 & arrAlbum(1, i) & " - " & arrAlbum(2, i) & " (" & arrAlbum(3, i) & ")"
 		REM sdb.messagebox TrackFolder, 2, array(4)
 		GeneratePath EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(TrackFolder)
 		CreateT2File EndSlash(EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(T2))
@@ -1312,8 +1312,8 @@ Function FolderFix(aFolder)
 	If Right(aFolder, 2) = ".." Then a = a & "_"' cannot end with a dot
 	If Right(aFolder, 1) = "." Then a = Left(a,Len(a)-1)' a single dot will be removed
 	a = Replace(a, "/", "_")' a slash here is a folder/subfolder separator elsewhere
-	a = Replace(a, "?", "_")'
-	a = Replace(a, ":", "_")' 
+	a = Replace(a, "?", "_")
+	a = Replace(a, ":", "_")
 	a = Replace(a, "*", "_")
 	a = Replace(a, "<", "[")
 	a = Replace(a, ">", "]")
