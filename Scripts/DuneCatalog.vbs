@@ -27,14 +27,17 @@ Dim dcVersion : dcVersion=1.8
 
 Dim DuneIndexFolder, DuneMusicFolderName, DuneDriveLetter, NetworkMusicFolderName, NetworkDriveLetter
 Dim SortAlbumsByDefault, DefaultOverwriteFiles, OpenAdvancedOptionsByDefault, ThoroughAlbumArtScanByDefault
-Dim arrAlbum(), StartTime, EndTime
+Dim AddTracksBranchDefault
+Dim arrAlbum(), StartTime, EndTime, CurSecs
 Dim GlassBubbleDefault
 Dim YearBeforeAlbumDefault
 
-const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe""" ' name of the IM Convert program
+' name of the ImageMagick Convert program
+const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe"""
 
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_index\music\"
+REM DuneIndexFolder = "e:\DuneIndex\"
 
 ' Location of the local (Dune) Music files. It is written as the internal storage path.
 DuneMusicFolderName = "storage_name://DuneHDD/"
@@ -47,6 +50,7 @@ NetworkMusicFolderName = "smb://bat/music/"
 NetworkDriveLetter = "U"
 
 ' Some default checkboxes
+' Sorting Albums
 SortAlbumsByDefault = TRUE
 ' Overwrite checkbox
 REM DefaultOverwriteFiles = FALSE
@@ -57,15 +61,17 @@ ThoroughAlbumArtScanByDefault = TRUE
 GlassBubbleDefault = FALSE
 ' Put Year before Album
 YearBeforeAlbumDefault = TRUE
+' Add Tracks Branch by default
+AddTracksBranchDefault = TRUE
 ' Open lower Advanced Options panel by default
-OpenAdvancedOptionsByDefault = FALSE
-REM OpenAdvancedOptionsByDefault = TRUE
+REM OpenAdvancedOptionsByDefault = FALSE
+OpenAdvancedOptionsByDefault = TRUE
 ' Changes until here. Keep the rest unchanged, unless you know what you are doing.
 ' =============================================================================================
 
 Dim lowform, highform, newheight
 lowform = 110
-highform = 360
+highform = 380
 newheight = lowform
 if OpenAdvancedOptionsByDefault Then newheight = highform
 
@@ -217,13 +223,20 @@ Sub OnStartUp() ' create form and controls
 	cbxSwapAlbumYear.Common.Hint = "Albums will be displayed in chronological order instead of alphabetical"
 	SDB.Objects("YearBeforeAlbum") = cbxSwapAlbumYear
 	
+	Dim cbxAddTracksBranch : Set cbxAddTracksBranch = SDB.UI.NewCheckBox(Form1)
+	cbxAddTracksBranch.Caption = "Add Tracks Branch"
+	cbxAddTracksBranch.Common.SetRect 35, 290, 315, 20
+	cbxAddTracksBranch.Checked = AddTracksBranchDefault
+	cbxAddTracksBranch.Common.Hint = "This will probably take more time"
+	SDB.Objects("AddTracksBranch") = cbxAddTracksBranch
+	
 	Dim lblInfo : Set lblInfo = SDB.UI.Newlabel(Form1)
-	lblInfo.Common.SetRect 140, 310, 315, 20
+	lblInfo.Common.SetRect 140, 330, 315, 20
 	lblInfo.Caption = "Keep mouse on any item for some more info"
 	lblInfo.Common.Hint = "Not on me, you Silly. I'm just a message."
 	
 	Dim ButtonOpen : Set ButtonOpen = SDB.UI.NewButton(Form1)
-	ButtonOpen.Common.SetRect 10, 305, 120, 20
+	ButtonOpen.Common.SetRect 10, 325, 120, 20
 	ButtonOpen.Caption = "Open Script in Editor"
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
 	Script.RegisterEvent ButtonOpen.Common, "OnClick", "ButtonOpenClick"
@@ -309,7 +322,10 @@ Sub ButtonGoClick (Form1)
 	newalbum = TRUE
 	
 	For index = 0 to maxFiles ' Loop through All Songs
-		Progress.Text = "Processing File " & index+1 & " of " & maxFiles+1 & ": " & arrAlbum(3, index) & " by " & arrAlbum(2, index)
+		EndTime = Timer()
+		CurSecs = EndTime - StartTime
+		Progress.Text = "Processing File " & index+1 & " of " & maxFiles+1 & " (" & FormatNumber((index+1)*100/(maxFiles+1),1) & "%), " & _
+			FormatNumber(CurSecs,0) & " seconds. Estimation: " & FormatNumber((CurSecs*(maxFiles+1)/(index+1))-CurSecs,0) & " seconds. Current Album: " & arrAlbum(3, index) & " by " & arrAlbum(2, index)
 		' Is the Album on the Dune or the accesible network?
 		CorrectSourceDir = FALSE
 		if UCase(Left(arrAlbum(5, index), 1)) = UCase(MusicDrive.Text) Then 
@@ -325,7 +341,7 @@ Sub ButtonGoClick (Form1)
 				' Create Album Folder
 				AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, index)) & "\" _
 					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")\"
-				AlbumFolder = AllBackSlashes(RemoveSpecialCharacters(AlbumFolder))
+				AlbumFolder = AllBackSlashes(FolderFix(AlbumFolder))
 				newalbum = FALSE
 			End If
 			
@@ -484,6 +500,24 @@ Function DuneYearFolder(Y)
 	End If
 End Function
 
+Function YearSubFolder(year)
+	If (year = "") Then
+		YearSubFolder = "Unknown\Empty"
+	ElseIf isNumeric(year) Then
+		If CInt(year) < 1950 Then
+			If CInt(year) = 0 Then
+				YearSubFolder = "0000-1949\0000"
+			Else
+				YearSubFolder = "0000-1949\" & year
+			End If
+		Else
+			YearSubFolder = DuneYearFolder(year) & "\" & year
+		End If
+	Else
+		YearSubFolder = "Unknown\" &  year
+	End If
+End Function
+
 Function isNumeric(xyz)
 	isNumeric = ((vartype(xyz) = 2) Or (vartype(xyz) = 8) Or (vartype(xyz) = 3))
 End Function
@@ -503,32 +537,60 @@ End Function
 
 Sub AddNextTrack(filecontent, i, source, ti)
 	' create & write file
-	Dim caption, mediaurl
-	caption = arrAlbum(0, i) & "." & arrAlbum(1, i)' include number
-	REM caption = arrAlbum(1, i)' exclude number
-	
+	Dim caption, mediaurl, TrackFolder
+	Dim cbxAddTracksBranch : Set cbxAddTracksBranch = SDB.Objects("AddTracksBranch")
+	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
+	caption = arrAlbum(0, i) & "." & arrAlbum(1, i)' number.trackname
 	If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
 	
-	mediaurl = arrAlbum(5, i)
-	If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
-	mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
-	filecontent = filecontent & _
-	"item." & ti+10 & ".caption=" & caption & chr(13) & chr(10) & _
-	"item." & ti+10 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
-	"item." & ti+10 & ".media_action=play" & chr(13) & chr(10) & _
-	"item." & ti+10 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
-	"item." & ti+10 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
-	"item." & ti+10 & ".icon_valign=center" & chr(13) & chr(10)
+	If cbxAddTracksBranch.checked Then
+		REM - create track folder: Tracks\T1\T2\T3  ==> T3 is trackname-artist
+		Dim T2, TwoChars
+		TwoChars = FolderFix(UCase(left(arrAlbum(1, i),2)))
+		If (Right(TwoChars,1) = " ") Then TwoChars = Left(TwoChars,1)
+		T2 = EndSlash(DuneABCFolder(arrAlbum(1, i)) & "\" & TwoChars)
+		REM sdb.messagebox T2, 2, array(4)
+		TrackFolder = T2 & arrAlbum(1, i) & " - " &	arrAlbum(2, i)
+		REM sdb.messagebox TrackFolder, 2, array(4)
+		GeneratePath EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(TrackFolder)
+		CreateT2File EndSlash(EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(T2))
+		CreateT3File EndSlash(EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(TrackFolder)), i, source
+
+		mediaurl = arrAlbum(5, i)
+		If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
+		If HasSpecialCharacter(TrackFolder) Then TrackFolder = CharSwap(TrackFolder)
+		
+		mediaurl = SwapSlashes("../../../Tracks/" & TrackFolder)
+		' new is browse
+		filecontent = filecontent & _
+		"item." & ti+10 & ".caption=" & caption & chr(13) & chr(10) & _
+		"item." & ti+10 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
+		"item." & ti+10 & ".media_action=browse" & chr(13) & chr(10) & _
+		"item." & ti+10 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti+10 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti+10 & ".icon_valign=center" & chr(13) & chr(10)
+		
+	Else' tracks in list will directly play
+		mediaurl = arrAlbum(5, i)
+		If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
+		mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
+		' original=play
+		filecontent = filecontent & _
+		"item." & ti+10 & ".caption=" & caption & chr(13) & chr(10) & _
+		"item." & ti+10 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
+		"item." & ti+10 & ".media_action=play" & chr(13) & chr(10) & _
+		"item." & ti+10 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti+10 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti+10 & ".icon_valign=center" & chr(13) & chr(10)
+	End If
 End Sub
 
 Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, trackindex
 	Dim filename, iconscalefactor
-	Dim ArtistFolder, ArtistAlbumFolder, YearSubFolder, YearFolder, AlbumFolder
+	Dim ArtistFolder, ArtistAlbumFolder, YearFolder, YearSFolder, AlbumFolder
 	Dim cbxYearBeforeAlbum : Set cbxYearBeforeAlbum = SDB.Objects("YearBeforeAlbum")
 	Dim IndexFolder : Set IndexFolder = SDB.Objects("IndexFolder")
-	Dim ti0
-	
-	ti0 = 0
+	Dim ti0 : ti0 = 0
 	
 	AlbumFolder = EndSlash(IndexFolder.Text) & Folder
 	GeneratePath AlbumFolder
@@ -537,34 +599,21 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 	If OKtoOverwrite(AlbumFolder & ".icon.jpg") Then WriteCoverArt arrAlbum, i, AlbumFolder & ".icon.jpg" ' Cover art
 	
 	' Create ArtistAlbum string
-	ArtistFolder = "Artists\" & DuneABCFolder(arrAlbum(2, i)) & "\" & arrAlbum(2, i) & "\"
-	ArtistFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistFolder))
+	ArtistFolder = "Artists\" & DuneABCFolder(arrAlbum(2, i)) & "\" & arrAlbum(2, i)
+	ArtistFolder = AllBackSlashes(FolderFix(ArtistFolder))
 	If cbxYearBeforeAlbum.checked Then
 		ArtistAlbumFolder = ArtistFolder & "\(" & arrAlbum(4, i) & ") " & arrAlbum(3, i) & "\"
 	Else
 		ArtistAlbumFolder = ArtistFolder & "\" & arrAlbum(3, i) & " (" & arrAlbum(4, i) & ")\"
 	End If
-	ArtistAlbumFolder = AllBackSlashes(RemoveSpecialCharacters(ArtistAlbumFolder))
 	ArtistFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistFolder)
+	ArtistAlbumFolder = AllBackSlashes(FolderFix(ArtistAlbumFolder))
+	ArtistAlbumFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistAlbumFolder)
 	
 	' Create Year strings
-	If (arrAlbum(4, i) = "") Then
-		YearSubFolder = "Unknown\Empty"
-	ElseIf isNumeric(arrAlbum(4, i)) Then
-		If CInt(arrAlbum(4, i)) < 1950 Then
-			If CInt(arrAlbum(4, i)) = 0 Then
-				YearSubFolder = "0000-1949\0000"
-			Else
-				YearSubFolder = "0000-1949\" & arrAlbum(4, i)
-			End If
-		Else
-			YearSubFolder = DuneYearFolder(arrAlbum(4, i)) & "\" & arrAlbum(4, i)
-		End If
-	Else
-		YearSubFolder = "Unknown\" &  arrAlbum(4, i)
-	End If
-	YearFolder = "Years\" & YearSubFolder & "\" & arrAlbum(3, i) & " - " & arrAlbum(2, i) & "\"
-	YearFolder = AllBackSlashes(RemoveSpecialCharacters(YearFolder))
+	YearSFolder = YearSubFolder(arrAlbum(4, i))
+	YearFolder = "Years\" & YearSFolder & "\" & arrAlbum(3, i) & " - " & arrAlbum(2, i) & "\"
+	YearFolder = AllBackSlashes(FolderFix(YearFolder))
 	YearFolder = EndSlash(IndexFolder.Text) & YearFolder
 
 	If OKtoOverwrite(AlbumFolder & "\dune_folder.txt") Then
@@ -574,14 +623,14 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		ScaleFactor = Round(350/Max(ImDim(0), ImDim(1)),3)
 		
 		Dim caption, mediaurl
-		caption = arrAlbum(3, i)
-		If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
 		
 		mediaurl = EndSlash(MusicFolder.ParentFolder)
 		If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
 		mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
 
 		' Play full Album
+		caption = arrAlbum(3, i)
+		If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
 		filecontent = filecontent & _
 			"item." & ti0 & ".caption=- " & caption & " -" & chr(13) & chr(10) & _
 			"item." & ti0 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
@@ -591,9 +640,11 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 			"item." & ti0 & ".icon_valign=center" & chr(13) & chr(10)
 
 		'Jump to Artist
+		caption = arrAlbum(2, i)
+		If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
 		filecontent = filecontent & _
-			"item." & ti0+1 & ".caption=- Jump to: " & arrAlbum(2, i) & " -" & chr(13) & chr(10) & _
-			"item." & ti0+1 & ".media_url=../../../Artists/" & DuneABCFolder(arrAlbum(2, i)) & "/" & arrAlbum(2, i) & "/" & chr(13) & chr(10) & _
+			"item." & ti0+1 & ".caption=- Jump to: " & caption & " -" & chr(13) & chr(10) & _
+			"item." & ti0+1 & ".media_url=../../../Artists/" & DuneABCFolder(caption) & "/" & caption & "/" & chr(13) & chr(10) & _
 			"item." & ti0+1 & ".media_action=browse" & chr(13) & chr(10) & _
 			"item." & ti0+1 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 			"item." & ti0+1 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -602,7 +653,7 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		' Jump to Year
 		filecontent = filecontent & _
 			"item." & ti0+2 & ".caption=- Jump to: " & arrAlbum(4, i) & " -" & chr(13) & chr(10) & _
-			"item." & ti0+2 & ".media_url=../../../Years/" & SwapSlashes(YearSubFolder) & chr(13) & chr(10) & _
+			"item." & ti0+2 & ".media_url=../../../Years/" & SwapSlashes(YearSFolder) & chr(13) & chr(10) & _
 			"item." & ti0+2 & ".media_action=browse" & chr(13) & chr(10) & _
 			"item." & ti0+2 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 			"item." & ti0+2 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -610,39 +661,12 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 
 		'Jump to Top of Branch
 		filecontent = filecontent & _
-			"item." & ti0+3 & ".caption=- Jump to Index Top -" & chr(13) & chr(10) & _
+			"item." & ti0+3 & ".caption=- Jump to: Index Top -" & chr(13) & chr(10) & _
 			"item." & ti0+3 & ".media_url=../../../" & chr(13) & chr(10) & _
 			"item." & ti0+3 & ".media_action=browse" & chr(13) & chr(10) & _
 			"item." & ti0+3 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 			"item." & ti0+3 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
 			"item." & ti0+3 & ".icon_valign=center" & chr(13) & chr(10)
-
-		REM 'Jump to Albums Branch
-		REM filecontent = filecontent & _
-			REM "item." & ti0+4 & ".caption=- Jump to: Albums -" & chr(13) & chr(10) & _
-			REM "item." & ti0+4 & ".media_url=../../../Albums/" & chr(13) & chr(10) & _
-			REM "item." & ti0+4 & ".media_action=browse" & chr(13) & chr(10) & _
-			REM "item." & ti0+4 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
-			REM "item." & ti0+4 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
-			REM "item." & ti0+4 & ".icon_valign=center" & chr(13) & chr(10)
-
-		REM 'Jump to Artists Branch
-		REM filecontent = filecontent & _
-			REM "item." & ti0+5 & ".caption=- Jump to: Artists -" & chr(13) & chr(10) & _
-			REM "item." & ti0+5 & ".media_url=../../../Artists/" & chr(13) & chr(10) & _
-			REM "item." & ti0+5 & ".media_action=browse" & chr(13) & chr(10) & _
-			REM "item." & ti0+5 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
-			REM "item." & ti0+5 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
-			REM "item." & ti0+5 & ".icon_valign=center" & chr(13) & chr(10)
-
-		REM ' Jump to Year Branch
-		REM filecontent = filecontent & _
-			REM "item." & ti0+6 & ".caption=- Jump to: Years -" & chr(13) & chr(10) & _
-			REM "item." & ti0+6 & ".media_url=../../../Years/" & chr(13) & chr(10) & _
-			REM "item." & ti0+6 & ".media_action=browse" & chr(13) & chr(10) & _
-			REM "item." & ti0+6 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
-			REM "item." & ti0+6 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
-			REM "item." & ti0+6 & ".icon_valign=center" & chr(13) & chr(10)
 
 		filecontent = filecontent & _
 			"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(13) & chr(10) & _
@@ -674,7 +698,6 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 	
 	' Create Artist dft
 	If OKtoOverwrite(ArtistFolder & "dune_folder.txt") Then
-		ArtistAlbumFolder = EndSlash(IndexFolder.Text) & EndSlash(ArtistAlbumFolder)
 		GeneratePath ArtistAlbumFolder
 		CreateArtistFolderIcon AlbumFolder, ArtistFolder
 	End If
@@ -707,6 +730,131 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		dftfso.Close
 	End If
 	filecontent = ""
+End Sub
+
+Sub CreateT2File(Folder)
+	REM sdb.messagebox ">>" & Folder & "<<", 2, array(4)
+	Dim T2dftfso : Set T2dftfso = fso.CreateTextFile(Folder & "dune_folder.txt" ,True, False) ' False creates ascii file, which Dune likes/needs
+	Dim T2filecontent
+	T2filecontent = _
+		".content_box_x=20" & chr(13) & chr(10) & _
+		".content_box_y=20" & chr(13) & chr(10) & _
+		"background_order=before_all" & chr(13) & chr(10) & _
+		"background_path=../../../.service/.listbackground.jpg" & chr(13) & chr(10) & _
+		"background_x=0" & chr(13) & chr(10) & _
+		"background_y=0" & chr(13) & chr(10) & _
+		"caption_font_size=normal" & chr(13) & chr(10) & _
+		"icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"icon_scale_factor=1" & chr(13) & chr(10) & _
+		"icon_top=0" & chr(13) & chr(10) & _
+		"icon_valign=center" & chr(13) & chr(10) & _
+		"num_cols=2" & chr(13) & chr(10) & _
+		"num_rows=10" & chr(13) & chr(10) & _
+		"paint_captions=yes" & chr(13) & chr(10) & _
+		"paint_help_line=no" & chr(13) & chr(10) & _
+		"paint_icon_selection_box=yes" & chr(13) & chr(10) & _
+		"paint_path_box=no" & chr(13) & chr(10) & _
+		"paint_scrollbar=no" & chr(13) & chr(10) & _
+		"text_bottom=10" & chr(13) & chr(10) & _
+		"use_icon_view=yes" & chr(13) & chr(10)
+
+	T2dftfso.Write(T2filecontent)
+	T2dftfso.Close ' Create DuneFolder.txt file
+End Sub
+
+Sub CreateT3File(Folder, index, sourcedir)
+	Dim T3dftfso : Set T3dftfso = fso.CreateTextFile(Folder & "dune_folder.txt" ,True, False)
+	Dim T3filecontent, ti0 : ti0 = 0
+	Dim caption, mediaurl, jArtist
+	
+	caption = arrAlbum(0, index) & "." & arrAlbum(1, index)' number.trackname
+	If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
+	mediaurl = arrAlbum(5, index)
+	If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
+	mediaurl = sourcedir & SwapSlashes(SkipDrive(mediaurl))
+	
+	T3filecontent = _
+		"item." & ti0+10 & ".caption=" & caption & chr(13) & chr(10) & _
+		"item." & ti0+10 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
+		"item." & ti0+10 & ".media_action=play" & chr(13) & chr(10) & _
+		"item." & ti0+10 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti0+10 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti0+10 & ".icon_valign=center" & chr(13) & chr(10)
+
+	'Jump to Artist
+	caption = arrAlbum(2, index)
+	If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
+	jArtist = caption
+	T3filecontent = T3filecontent & _
+		"item." & ti0+1 & ".caption=- Jump to: " & caption & " -" & chr(13) & chr(10) & _
+		"item." & ti0+1 & ".media_url=../../../../Artists/" & DuneABCFolder(caption) & "/" & caption & "/" & chr(13) & chr(10) & _
+		"item." & ti0+1 & ".media_action=browse" & chr(13) & chr(10) & _
+		"item." & ti0+1 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti0+1 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti0+1 & ".icon_valign=center" & chr(13) & chr(10)
+		
+	' Jump to Album
+	caption = arrAlbum(3, index)
+	If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
+	T3filecontent = T3filecontent & _
+		"item." & ti0 & ".caption=- Jump to: " & caption & " -" & chr(13) & chr(10) & _
+		"item." & ti0 & ".media_url=../../../../Albums/" & DuneABCFolder(caption) & "/" & _
+			caption & " - " & jArtist & " (" & arrAlbum(4, index) & ")/" & chr(13) & chr(10) & _
+		"item." & ti0 & ".media_action=browse" & chr(13) & chr(10) & _
+		"item." & ti0 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti0 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti0 & ".icon_valign=center" & chr(13) & chr(10)
+
+	' Jump to Year
+	T3filecontent = T3filecontent & _
+		"item." & ti0+2 & ".caption=- Jump to: " & arrAlbum(4, index) & " -" & chr(13) & chr(10) & _
+		"item." & ti0+2 & ".media_url=../../../../Years/" & SwapSlashes(YearSubFolder(arrAlbum(4, index))) & chr(13) & chr(10) & _
+		"item." & ti0+2 & ".media_action=browse" & chr(13) & chr(10) & _
+		"item." & ti0+2 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti0+2 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti0+2 & ".icon_valign=center" & chr(13) & chr(10)
+
+	'Jump to Top of Branch
+	T3filecontent = T3filecontent & _
+		"item." & ti0+3 & ".caption=- Jump to: Index Top -" & chr(13) & chr(10) & _
+		"item." & ti0+3 & ".media_url=../../../../" & chr(13) & chr(10) & _
+		"item." & ti0+3 & ".media_action=browse" & chr(13) & chr(10) & _
+		"item." & ti0+3 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti0+3 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti0+3 & ".icon_valign=center" & chr(13) & chr(10)
+
+	'Jump one level Up
+	T3filecontent = T3filecontent & _
+		"item." & ti0+4 & ".caption=- Jump to: 1 Up -" & chr(13) & chr(10) & _
+		"item." & ti0+4 & ".media_url=../" & chr(13) & chr(10) & _
+		"item." & ti0+4 & ".media_action=browse" & chr(13) & chr(10) & _
+		"item." & ti0+4 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"item." & ti0+4 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
+		"item." & ti0+4 & ".icon_valign=center" & chr(13) & chr(10)
+
+	' remainder of the file
+	T3filecontent = T3filecontent & _
+		"system_files=*.aai,*.jpg,*.png,*.m3u,*.pls,*.txt" & chr(13) & chr(10) & _
+		"background_order=first" & chr(13) & chr(10) & _
+		"background_path=../../../../.service/.listbackground.jpg" & chr(13) & chr(10) & _
+		"background_order=before_all" & chr(13) & chr(10) & _
+		"paint_path_box=no" & chr(13) & chr(10) & _
+		"paint_help_line=no" & chr(13) & chr(10) & _
+		"icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
+		"icon_scale_factor=1" & chr(13) & chr(10) & _
+		"use_icon_view=yes" & chr(13) & chr(10) & _
+		"icon_valign=center" & chr(13) & chr(10) & _
+		"paint_icons=no" & chr(13) & chr(10) & _
+		"paint_icon_selection_box=yes" & chr(13) & chr(10) & _
+		"num_cols=2" & chr(13) & chr(10) & _
+		"num_rows=10" & chr(13) & chr(10) & _
+		"caption_font_size=normal" & chr(13) & chr(10) & _
+		"sort_field=unsorted" & chr(13) & chr(10) & _
+		"sort_dir = asc" & chr(13) & chr(10) & _
+		"paint_captions=yes" & chr(13) & chr(10)
+
+	T3dftfso.Write(T3filecontent)
+	T3dftfso.Close ' Create DuneFolder.txt file
 End Sub
 
 Function ImageDimension(ImageFile)
@@ -758,19 +906,19 @@ Function ImageDimension(ImageFile)
 	Set fso = Nothing
 End Function
 
-Function RemoveSpecialCharacters(FolderName)
-	Dim a
-	' remove special characters forbidden for file- and folder names
-	' " 	* 	/ 	: 	< 	> 	? 	\ 	|  
-	a = Replace(FolderName, "?", "_")
-	a = Replace(a, "*", "_")
-	a = Replace(a, ":", "_")
-	a = Replace(a, "<", "[")
-	a = Replace(a, ">", "]")
-	a = Replace(a, "|", "_")
-	a = Replace(a, """", "_")
-	RemoveSpecialCharacters = a
-End Function
+REM Function RemoveSpecialCharacters(FolderName)
+	REM Dim a
+	REM ' remove special characters forbidden for file- and folder names
+	REM ' " 	* 	/ 	: 	< 	> 	? 	\ 	|  
+	REM a = Replace(FolderName, "?", "_")
+	REM a = Replace(a, "*", "_")
+	REM a = Replace(a, ":", "_")
+	REM a = Replace(a, "<", "[")
+	REM a = Replace(a, ">", "]")
+	REM a = Replace(a, "|", "_")
+	REM a = Replace(a, """", "_")
+	REM RemoveSpecialCharacters = a
+REM End Function
 
 Function EndSlash(pPath)
 	If Right(pPath,1) = "\" Then
@@ -781,10 +929,10 @@ Function EndSlash(pPath)
 End Function
 
 Function GeneratePath(pFolderPath)
+	REM sdb.messagebox pFolderPath, 2, Array(4)
   GeneratePath = False
   If Not fso.FolderExists(pFolderPath) Then
     If GeneratePath(fso.GetParentFolderName(pFolderPath)) Then
-			REM sdb.messagebox pFolderPath, 2, Array(4)
       GeneratePath = True
       fso.CreateFolder(pFolderPath)
     End If
@@ -800,7 +948,7 @@ Sub WriteCoverArt(aArr, i, aPath)
 	' ranking:
 	' Size:	middle=5, large=4, small=2
 	' Type: JPG=3, any=2
-	' Name: front=6, cover/folder=5, other=1
+	' Name: front/voor=6, cover/folder=5, other=1
 	
 	' Music Source Path
 	Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
@@ -837,9 +985,9 @@ Sub WriteCoverArt(aArr, i, aPath)
 				MaxDim = 0
 			End If
 			CFN = fso.GetFileName(fileIdx)
-			If InStr(1, CFN,"front", 1) Then
+			If (InStr(1, CFN,"front", 1) or InStr(1, CFN,"voor", 1)) Then
 				CurrentRank = 6 * CurrentRank
-			ElseIf InStr(1, CFN,"cover", 1) Then
+			ElseIf (InStr(1, CFN,"cover", 1) or InStr(1, CFN,"cover", 1)) Then
 				CurrentRank = 5 * CurrentRank
 			Else
 				CurrentRank = 1 * CurrentRank
@@ -927,6 +1075,7 @@ Function OKtoOverwrite(aFile)
 	OKtoOverwrite = TRUE
 	' don't overwrite if file exists and overwrite is not allowed
 	If fso.FileExists(aFile) And Not OverwriteFile.Checked Then OKtoOverwrite = FALSE
+	'sdb.messagebox OKtoOverwrite, 2, array(4)
 End Function
 
 Sub CopyFiles(src, tgt)
@@ -1165,6 +1314,11 @@ Function FolderFix(aFolder)
 	a = Replace(a, "/", "_")' a slash here is a folder/subfolder separator elsewhere
 	a = Replace(a, "?", "_")'
 	a = Replace(a, ":", "_")' 
+	a = Replace(a, "*", "_")
+	a = Replace(a, "<", "[")
+	a = Replace(a, ">", "]")
+	a = Replace(a, "|", "_")
+	a = Replace(a, """", "_")
 	FolderFix = a
 End Function
 
