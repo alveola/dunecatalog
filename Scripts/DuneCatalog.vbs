@@ -5,7 +5,7 @@ Option Explicit
 ' 
 ' Name    : DuneCatalog
 ' Version : 1.8
-Dim dcVersion : dcVersion=1.8
+Dim dcVersion : dcVersion="1.8"
 ' Date    : 2012-12-22
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
@@ -19,6 +19,9 @@ Dim dcVersion : dcVersion=1.8
 ' - index structure is changed:
 '    * less files are written and copied
 '    * script is a bit faster. 
+'
+' fixed:
+' - bug when using not to overwrite files
 '
 ' ==========================================================================================
 ' Change next values to reflect your Windows/Network/Dune Setup
@@ -324,8 +327,11 @@ Sub ButtonGoClick (Form1)
 	For index = 0 to maxFiles ' Loop through All Songs
 		EndTime = Timer()
 		CurSecs = EndTime - StartTime
-		Progress.Text = "Processing File " & index+1 & " of " & maxFiles+1 & " (" & FormatNumber((index+1)*100/(maxFiles+1),1) & "%), " & _
-			FormatNumber(CurSecs,0) & " seconds. Estimation: " & FormatNumber((CurSecs*(maxFiles+1)/(index+1))-CurSecs,0) & " seconds. Current Album: " & arrAlbum(3, index) & " by " & arrAlbum(2, index)
+		Progress.Text = "Processing File " & index+1 & " of " & _
+			maxFiles+1 & " (" & FormatNumber((index+1)*100/(maxFiles+1),1) & "%), " & _
+			FormatNumber(CurSecs,0) & " seconds. Estimation: " & _
+			FormatNumber((CurSecs*(maxFiles+1)/(index+1))-CurSecs,0) & _
+			" seconds. Current Album: " & arrAlbum(3, index) & " by " & arrAlbum(2, index)
 		' Is the Album on the Dune or the accesible network?
 		CorrectSourceDir = FALSE
 		if UCase(Left(arrAlbum(5, index), 1)) = UCase(MusicDrive.Text) Then 
@@ -340,8 +346,8 @@ Sub ButtonGoClick (Form1)
 				trackindex = 1
 				' Create Album Folder
 				AlbumFolder = "Albums\" & DuneABCFolder(arrAlbum(3, index)) & "\" _
-					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")\"
-				AlbumFolder = AllBackSlashes(FolderFix(AlbumFolder))
+					& arrAlbum(3, index) & " - " & arrAlbum(2, index) & " (" & arrAlbum(4, index) & ")"
+				AlbumFolder = AllBackSlashes(EndSlash(FolderFix(AlbumFolder)))
 				newalbum = FALSE
 			End If
 			
@@ -605,7 +611,7 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 	GeneratePath AlbumFolder
 	
 	' Create .icon.jpg
-	If OKtoOverwrite(AlbumFolder & ".icon.jpg") Then WriteCoverArt arrAlbum, i, AlbumFolder & ".icon.jpg" ' Cover art
+	If OKtoWrite(AlbumFolder & ".icon.jpg") Then WriteCoverArt arrAlbum, i, AlbumFolder & ".icon.jpg" ' Cover art
 	
 	' Create ArtistAlbum string
 	ArtistFolder = "Artists\" & DuneABCFolder(arrAlbum(2, i)) & "\" & arrAlbum(2, i)
@@ -625,7 +631,7 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 	YearFolder = AllBackSlashes(FolderFix(YearFolder))
 	YearFolder = EndSlash(IndexFolder.Text) & YearFolder
 
-	If OKtoOverwrite(AlbumFolder & "\dune_folder.txt") Then
+	If OKtoWrite(AlbumFolder & "dune_folder.txt") Then
 		Dim MusicFolder : Set MusicFolder = fso.GetFile(arrAlbum(5, i))
 		Dim ImDim, ScaleFactor
 		ImDim=ImageDimension(AlbumFolder & ".icon.jpg")
@@ -653,7 +659,8 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 		If HasSpecialCharacter(caption) Then caption = CharSwap(caption)
 		filecontent = filecontent & _
 			"item." & ti0+1 & ".caption=- Jump to: " & caption & " -" & chr(13) & chr(10) & _
-			"item." & ti0+1 & ".media_url=../../../Artists/" & DuneABCFolder(caption) & "/" & caption & "/" & chr(13) & chr(10) & _
+			"item." & ti0+1 & ".media_url=../../../Artists/" & DuneABCFolder(caption) & "/" & _
+				caption & "/" & chr(13) & chr(10) & _
 			"item." & ti0+1 & ".media_action=browse" & chr(13) & chr(10) & _
 			"item." & ti0+1 & ".icon_path=../../../.service/.empty.png" & chr(13) & chr(10) & _
 			"item." & ti0+1 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -706,15 +713,16 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 	End If
 	
 	' Create Artist dft
-	If OKtoOverwrite(ArtistFolder & "dune_folder.txt") Then
-		GeneratePath ArtistAlbumFolder
+	If OKtoWrite(ArtistFolder & "dune_folder.txt") Then
+		GeneratePath ArtistFolder
 		CreateArtistFolderIcon AlbumFolder, ArtistFolder
 	End If
 	
 	If HasSpecialCharacter(Folder) Then Folder = CharSwap(Folder)
 	
 	' Create ArtistAlbum dft
-	If OktoOverwrite(ArtistAlbumFolder & "dune_folder.txt") Then
+	If OKtoWrite(ArtistAlbumFolder & "dune_folder.txt") Then
+		GeneratePath ArtistAlbumFolder
 		filecontent = _
 			"paint_scrollbar=no" & chr(13) & chr(10) & _
 			"paint_path_box=no" & chr(13) & chr(10) & _
@@ -726,13 +734,13 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 			"media_action=browse" & chr(13) & chr(10) & _
 			"media_url=../../../../" & SwapSlashes(Folder) & chr(13) & chr(10)
 			'
-		Set dftfso = fso.CreateTextFile(ArtistAlbumFolder & "dune_folder.txt" ,True, False)
+		Set dftfso = fso.CreateTextFile(ArtistAlbumFolder & "dune_folder.txt", True, False)
 		dftfso.Write(filecontent)
 		dftfso.Close ' Create DuneFolder.txt file
 	End If
 	
 	' Create Year Folder & write dft
-	If OKtoOverwrite(YearFolder & "dune_folder.txt") Then
+	If OKtoWrite(YearFolder & "dune_folder.txt") Then
 		GeneratePath YearFolder
 		Set dftfso = fso.CreateTextFile(YearFolder & "dune_folder.txt" ,True, False)
 		dftfso.Write(filecontent)
@@ -742,7 +750,8 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 End Sub
 
 Sub CreateT2File(Folder)
-	Dim T2dftfso : Set T2dftfso = fso.CreateTextFile(Folder & "dune_folder.txt" ,True, False) ' False creates ascii file, which Dune likes/needs
+	Dim T2dftfso : Set T2dftfso = fso.CreateTextFile(Folder & "dune_folder.txt" ,True, False)
+		' "False" creates ascii file, which Dune likes/needs
 	Dim T2filecontent
 	T2filecontent = _
 		".content_box_x=20" & chr(13) & chr(10) & _
@@ -795,7 +804,8 @@ Sub CreateT3File(Folder, index, sourcedir)
 	jArtist = caption
 	T3filecontent = T3filecontent & _
 		"item." & ti0+1 & ".caption=- Jump to: " & caption & " -" & chr(13) & chr(10) & _
-		"item." & ti0+1 & ".media_url=../../../../Artists/" & DuneABCFolder(caption) & "/" & caption & "/" & chr(13) & chr(10) & _
+		"item." & ti0+1 & ".media_url=../../../../Artists/" & DuneABCFolder(caption) & "/" _
+			& caption & "/" & chr(13) & chr(10) & _
 		"item." & ti0+1 & ".media_action=browse" & chr(13) & chr(10) & _
 		"item." & ti0+1 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
 		"item." & ti0+1 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -816,7 +826,8 @@ Sub CreateT3File(Folder, index, sourcedir)
 	' Jump to Year
 	T3filecontent = T3filecontent & _
 		"item." & ti0+2 & ".caption=- Jump to: " & arrAlbum(4, index) & " -" & chr(13) & chr(10) & _
-		"item." & ti0+2 & ".media_url=../../../../Years/" & SwapSlashes(YearSubFolder(arrAlbum(4, index))) & chr(13) & chr(10) & _
+		"item." & ti0+2 & ".media_url=../../../../Years/" & SwapSlashes(YearSubFolder(arrAlbum(4, index))) _
+			& chr(13) & chr(10) & _
 		"item." & ti0+2 & ".media_action=browse" & chr(13) & chr(10) & _
 		"item." & ti0+2 & ".icon_path=../../../../.service/.empty.png" & chr(13) & chr(10) & _
 		"item." & ti0+2 & ".icon_scale_factor=1" & chr(13) & chr(10) & _
@@ -1063,21 +1074,20 @@ Function FitImage(Img)
 	If (MaxImDim >= 200) AND (MaxImDim <= 350) Then FitImage = TRUE
 End Function
 
-Function OKtoOverwrite(aFile)
+Function OKtoWrite(aFile)
 	Dim OverwriteFile : Set OverwriteFile = SDB.Objects("OverwriteFiles")
-	OKtoOverwrite = TRUE
+	OKtoWrite = TRUE
 	' don't overwrite if file exists and overwrite is not allowed
-	If fso.FileExists(aFile) And Not OverwriteFile.Checked Then OKtoOverwrite = FALSE
-	'sdb.messagebox OKtoOverwrite, 2, array(4)
+	If fso.FileExists(aFile) And Not OverwriteFile.Checked Then OKtoWrite = FALSE
 End Function
 
 Sub CopyFiles(src, tgt)
 	' copy m3u
-	If OKtoOverwrite(tgt & ".list.m3u") Then fso.CopyFile src & ".list.m3u", tgt
+	If OKtoWrite(tgt & ".list.m3u") Then fso.CopyFile src & ".list.m3u", tgt
 	' copy png
-	If OKtoOverwrite(tgt & ".icon.jpg") Then fso.CopyFile src & ".icon.jpg", tgt
+	If OKtoWrite(tgt & ".icon.jpg") Then fso.CopyFile src & ".icon.jpg", tgt
 	' copy dune_folder.txt
-	If OKtoOverwrite(tgt & "dune_folder.txt") Then fso.CopyFile src & "dune_folder.txt", tgt
+	If OKtoWrite(tgt & "dune_folder.txt") Then fso.CopyFile src & "dune_folder.txt", tgt
 End Sub
 
 Sub CopyFolderFiles(albumF, artistF)
@@ -1100,7 +1110,7 @@ Sub CopyFolderFiles(albumF, artistF)
 	If CreateArtistIcon Then
 		If fso.FileExists(albumF & ".icon.jpg") Then
 			Dim h2, w2, ScaleFactor
-			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile albumF & ".icon.jpg", artistF
+			If OKtoWrite(artistF & ".icon.jpg") Then fso.CopyFile albumF & ".icon.jpg", artistF
 			If UseIM.Checked Then
 				Dim img : Set img = CreateObject("ImageMagickObject.MagickImage.1")' Load ImageMagick
 				w2 = img.Identify ("-format", "%w", albumF & ".icon.jpg")
@@ -1116,8 +1126,9 @@ Sub CopyFolderFiles(albumF, artistF)
 			ScaleFactor = Round(350/Max(h2, w2),3)
 			WriteDuneSubFolder EndSlash(artistF) & "dune_folder.txt", ScaleFactor
 		Else
-			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile DCScriptFilesFolder & ".icon.jpg", artistF
-			If OKtoOverwrite(artistF & "dune_folder.txt") Then fso.CopyFile DCScriptFilesFolder & "SFdune_folder.txt", artistF & "dune_folder.txt"
+			If OKtoWrite(artistF & ".icon.jpg") Then fso.CopyFile DCScriptFilesFolder & ".icon.jpg", artistF
+			If OKtoWrite(artistF & "dune_folder.txt") Then fso.CopyFile DCScriptFilesFolder & _
+				"SFdune_folder.txt", artistF & "dune_folder.txt"
 		End If
 	End If
 End Sub
@@ -1142,7 +1153,7 @@ Sub CreateArtistFolderIcon(albumF, artistF)
 	If CreateArtistIcon Then
 		If fso.FileExists(albumF & ".icon.jpg") Then
 			Dim h2, w2, ScaleFactor
-			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile albumF & ".icon.jpg", artistF
+			If OKtoWrite(artistF & ".icon.jpg") Then fso.CopyFile albumF & ".icon.jpg", artistF
 			If UseIM.Checked Then
 				Dim img : Set img = CreateObject("ImageMagickObject.MagickImage.1")' Load ImageMagick
 				w2 = img.Identify ("-format", "%w", albumF & ".icon.jpg")
@@ -1158,8 +1169,9 @@ Sub CreateArtistFolderIcon(albumF, artistF)
 			ScaleFactor = Round(350/Max(h2, w2),3)
 			WriteDuneSubFolder EndSlash(artistF) & "dune_folder.txt", ScaleFactor
 		Else
-			If OKtoOverwrite(artistF & ".icon.jpg") Then fso.CopyFile DCScriptFilesFolder & ".icon.jpg", artistF
-			If OKtoOverwrite(artistF & "dune_folder.txt") Then fso.CopyFile DCScriptFilesFolder & "SFdune_folder.txt", artistF & "dune_folder.txt"
+			If OKtoWrite(artistF & ".icon.jpg") Then fso.CopyFile DCScriptFilesFolder & ".icon.jpg", artistF
+			If OKtoWrite(artistF & "dune_folder.txt") Then fso.CopyFile DCScriptFilesFolder & _
+				"SFdune_folder.txt", artistF & "dune_folder.txt"
 		End If
 	End If
 End Sub
@@ -1431,13 +1443,15 @@ Sub PrintAlbumArray(aTracks)
 	msg = ""
 	idxLast = UBound(aTracks,2)
 	For i = 0 to idxLast
-		msg = msg & "Alb:" & aTracks(6, i) & "Song:" & chr(9) & aTracks(0, i) & chr(9) & aTracks(1, i) & chr(9) & aTracks(2, i) & chr(9) & aTracks(3, i) & chr(13)
+		msg = msg & "Alb:" & aTracks(6, i) & "Song:" & chr(9) & aTracks(0, i) & chr(9) _
+			& aTracks(1, i) & chr(9) & aTracks(2, i) & chr(9) & aTracks(3, i) & chr(13)
 	Next
 	SDB.MessageBox msg, mtInformation, Array(mbOk)
 End Sub
 
 Sub WriteAlbumFolderdft(filename, scalefactor)
-	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
+	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False)
+		' False creates ascii file, which Dune likes/needs
 	Dim filecontent
 	filecontent = _
 	"icon_path=.icon.jpg" & chr(13) & chr(10) & _
@@ -1463,7 +1477,8 @@ End Sub
 
 Sub WriteDuneSubFolder(filename, scalefactor)
 	REM Dim fso : Set fso = CreateObject("Scripting.FileSystemObject")
-	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False) ' False creates ascii file, which Dune likes/needs
+	Dim dftfso : Set dftfso = fso.CreateTextFile(filename ,True, False)
+		' False creates ascii file, which Dune likes/needs
 	Dim filecontent : filecontent = _
 		"icon_path=" & ".icon.jpg" & chr(13) & chr(10) & _
 		"icon_scale_factor=" & ScaleFactor & chr(13) & chr(10) & _
@@ -1557,7 +1572,8 @@ Sub MakeGlassBubble(sourceFile)
 	
 	Command = strConv & chr(34) & sourceFile & chr(34) _
 		& " -alpha off -fill white -colorize 100% " _
-		& " -draw ""fill black polygon 0,0 0," & CD & " " & CD & ",0 fill white circle " & CD & "," & CD & " " & CD & ",0""" _
+		& " -draw ""fill black polygon 0,0 0," & CD & " " & CD & ",0 fill white circle " _
+			& CD & "," & CD & " " & CD & ",0""" _
 		& "	( +clone -flip ) -compose Multiply -composite " _
 		& " ( +clone -flop ) -compose Multiply -composite " _
 		& " -background Gray50 -alpha Shape " & chr(34) & tgt1 & chr(34)
