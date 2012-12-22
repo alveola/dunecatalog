@@ -18,21 +18,21 @@ set MAIN=DuneIndex
 
 ::create albums
 echo Create Album Folders and Icons
-set BUTTONCOL=GREEN
+set BUTTONCOL=OliveDrab3
 call createalldirs %MAIN%\Albums\
 call createallletters %MAIN%\Albums\
 call createfolder Albums %MAIN%\Albums
 
 ::create artists
 echo Create Artist Folders and Icons
-set BUTTONCOL=RED
+set BUTTONCOL=FireBrick
 call createalldirs %MAIN%\Artists
 call createallletters %MAIN%\Artists
 call createfolder Artists %MAIN%\Artists
 
 ::create decades
 echo Create Decade Folders and Icons
-set BUTTONCOL=BLUE
+set BUTTONCOL=SteelBlue3
 call createallyeardirs %MAIN%\Years		
 call createalldecades %MAIN%\Years
 call createfolder Years %MAIN%\Years
@@ -47,7 +47,7 @@ call createspecial *?#@ %MAIN%\Years\other
 
 ::create tracks
 echo Create Artist Folders and Icons
-set BUTTONCOL=YELLOW
+set BUTTONCOL=Gold2
 call createalldirs %MAIN%\Tracks
 call createallletters %MAIN%\Tracks
 call createfolder Tracks %MAIN%\Tracks
