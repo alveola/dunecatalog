@@ -6,7 +6,7 @@ Option Explicit
 ' Name    : DuneCatalog
 ' Version : 1.8
 Dim dcVersion : dcVersion=1.8
-' Date    : 2012-12-09
+' Date    : 2012-12-22
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
 ' ==========================================================================================
@@ -547,11 +547,21 @@ Sub AddNextTrack(filecontent, i, source, ti)
 		REM - create track folder: Tracks\T1\T2\T3  ==> T3 is trackname-artist
 		Dim T2, TwoChars
 		TwoChars = FolderFix(UCase(left(arrAlbum(1, i),2)))
+
+		' some corrections
+		Dim tracktitle : tracktitle = arrAlbum(1, i)
 		If (Right(TwoChars,1) = " ") Then TwoChars = Left(TwoChars,1)
+		If (TwoChars = "..") Then
+			TwoChars = "'..'"
+			tracktitle = "'" & tracktitle
+		End If
+		If (TwoChars = "  ") Then
+			TwoChars = "'  '"
+			tracktitle = "'" & tracktitle
+		End If
+		
 		T2 = EndSlash(DuneABCFolder(arrAlbum(1, i)) & "\" & TwoChars)
-		REM sdb.messagebox T2, 2, array(4)
-		TrackFolder = T2 & arrAlbum(1, i) & " - " & arrAlbum(2, i) & " (" & arrAlbum(3, i) & ")"
-		REM sdb.messagebox TrackFolder, 2, array(4)
+		TrackFolder = T2 & tracktitle & " - " & arrAlbum(2, i) & " (" & arrAlbum(3, i) & ")"
 		GeneratePath EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(TrackFolder)
 		CreateT2File EndSlash(EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(T2))
 		CreateT3File EndSlash(EndSlash(IndexFolder.Text) & "Tracks\" & FolderFix(TrackFolder)), i, source
@@ -574,7 +584,6 @@ Sub AddNextTrack(filecontent, i, source, ti)
 		mediaurl = arrAlbum(5, i)
 		If HasSpecialCharacter(mediaurl) Then mediaurl = CharSwap(mediaurl)
 		mediaurl = source & SwapSlashes(SkipDrive(mediaurl))
-		' original=play
 		filecontent = filecontent & _
 		"item." & ti+10 & ".caption=" & caption & chr(13) & chr(10) & _
 		"item." & ti+10 & ".media_url=" & mediaurl & chr(13) & chr(10) & _
@@ -733,7 +742,6 @@ Sub WriteAlbum(filecontent, i, Folder, source, ti) ' index, AlbumFolder, loc, tr
 End Sub
 
 Sub CreateT2File(Folder)
-	REM sdb.messagebox ">>" & Folder & "<<", 2, array(4)
 	Dim T2dftfso : Set T2dftfso = fso.CreateTextFile(Folder & "dune_folder.txt" ,True, False) ' False creates ascii file, which Dune likes/needs
 	Dim T2filecontent
 	T2filecontent = _
@@ -906,20 +914,6 @@ Function ImageDimension(ImageFile)
 	Set fso = Nothing
 End Function
 
-REM Function RemoveSpecialCharacters(FolderName)
-	REM Dim a
-	REM ' remove special characters forbidden for file- and folder names
-	REM ' " 	* 	/ 	: 	< 	> 	? 	\ 	|  
-	REM a = Replace(FolderName, "?", "_")
-	REM a = Replace(a, "*", "_")
-	REM a = Replace(a, ":", "_")
-	REM a = Replace(a, "<", "[")
-	REM a = Replace(a, ">", "]")
-	REM a = Replace(a, "|", "_")
-	REM a = Replace(a, """", "_")
-	REM RemoveSpecialCharacters = a
-REM End Function
-
 Function EndSlash(pPath)
 	If Right(pPath,1) = "\" Then
 		EndSlash = pPath
@@ -929,7 +923,6 @@ Function EndSlash(pPath)
 End Function
 
 Function GeneratePath(pFolderPath)
-	REM sdb.messagebox pFolderPath, 2, Array(4)
   GeneratePath = False
   If Not fso.FolderExists(pFolderPath) Then
     If GeneratePath(fso.GetParentFolderName(pFolderPath)) Then
@@ -1183,7 +1176,6 @@ End Sub
 
 Function SkipDrive(aPath)
 	' remove driveletter and :\ of aPath
-	' remove :\
 	Dim A : A = Replace(aPath, ":\", "")
 	' remove driveletter
 	SkipDrive = Right(A,Len(A)-1)
