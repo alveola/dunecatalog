@@ -4,24 +4,22 @@ Option Explicit
 ' A MediaMonkey Script creates Index Files for a Dune Streamer to use it as a Music Jukebox.
 ' 
 ' Name    : DuneCatalog
-' Version : 1.8
-Dim dcVersion : dcVersion="1.8"
-' Date    : 2012-12-22
+' Version : 1.9
+Dim dcVersion : dcVersion="1.9"
+' Date    : 2013-02-22
 ' INSTALL : See DuneCatalog.txt
 ' URL     : http://code.google.com/p/dunecatalog/
 ' ==========================================================================================
 '
 ' added:
-' - playing individual tracks is now possible
-' - play albums gapless as 'slideshow'
+'  - button to mount Dune Disk (if not mounted. Will not error if pressed ...)
 '
 ' changed:
-' - index structure is changed:
-'    * less files are written and copied
-'    * script is a bit faster. 
+'   - interface updates (tab order, shortcuts etc.)
+'   - updated timing info
 '
 ' fixed:
-' - bug when using not to overwrite files
+'  - duplicate album names are now sorted correctly
 '
 ' ==========================================================================================
 ' Change next values to reflect your Windows/Network/Dune Setup
@@ -37,6 +35,7 @@ Dim YearBeforeAlbumDefault
 
 ' name of the ImageMagick Convert program
 const strConv = """c:\Program Files (x86)\ImageMagick-6.8.0-Q16\convert.exe"""
+const MountDuneCommand = "%comspec% /c net use J: \\dune\DuneHDD"
 
 ' Location of the music index on the Dune Player
 DuneIndexFolder = "J:\_index\music\"
@@ -56,8 +55,8 @@ NetworkDriveLetter = "U"
 ' Sorting Albums
 SortAlbumsByDefault = TRUE
 ' Overwrite checkbox
-REM DefaultOverwriteFiles = FALSE
-DefaultOverwriteFiles = TRUE
+DefaultOverwriteFiles = FALSE
+REM DefaultOverwriteFiles = TRUE
 ' Thorough AlbumArt Scan
 ThoroughAlbumArtScanByDefault = TRUE
 ' Glass Bubble default setting
@@ -67,8 +66,8 @@ YearBeforeAlbumDefault = TRUE
 ' Add Tracks Branch by default
 AddTracksBranchDefault = TRUE
 ' Open lower Advanced Options panel by default
-REM OpenAdvancedOptionsByDefault = FALSE
-OpenAdvancedOptionsByDefault = TRUE
+OpenAdvancedOptionsByDefault = FALSE
+REM OpenAdvancedOptionsByDefault = TRUE
 ' Changes until here. Keep the rest unchanged, unless you know what you are doing.
 ' =============================================================================================
 
@@ -128,6 +127,27 @@ Sub OnStartUp() ' create form and controls
 	label4.Caption = trackcount
 	SDB.Objects("LblTrackCount") = label4
 	
+	Dim ButtonOptions : Set ButtonOptions = SDB.UI.NewButton(Form1)
+	ButtonOptions.Common.SetRect 10, 45, 100, 28
+	ButtonOptions.Caption = "&Advanced Options"
+	ButtonOptions.Common.Hint = "Open Advanced Options below"
+	Script.RegisterEvent ButtonOptions.Common, "OnClick", "ButtonOptionsClick"
+	Set SDB.Objects("OpenOptions") = ButtonOptions
+	
+	Dim ButtonCancel : Set ButtonCancel = SDB.UI.NewButton(Form1)
+	ButtonCancel.Common.SetRect 130, 45, 100, 28
+	ButtonCancel.Caption = "&Cancel"
+	Script.RegisterEvent ButtonCancel, "OnClick", "ButtonCancelClick"
+	ButtonCancel.Cancel = True
+	ButtonCancel.Common.Hint = "End-Stop-Close-Cancel-Exit"
+	
+	Dim ButtonGo : Set ButtonGo = SDB.UI.NewButton(Form1)
+	ButtonGo.Common.SetRect 250, 45, 100, 28
+	ButtonGo.Caption = "&Go"
+	ButtonGo.Common.Hint = "Start/Run/GO!"
+	ButtonGo.Default = True
+	Script.RegisterEvent ButtonGo.Common, "OnClick", "ButtonGoClick"
+	
 	Dim MusicDrive : Set MusicDrive = SDB.UI.NewEdit(Form1)
 	MusicDrive.Common.ControlName = "MusicDrive"
 	MusicDrive.Common.SetRect 10, 90, 20, 20
@@ -137,10 +157,16 @@ Sub OnStartUp() ' create form and controls
 	
 	Dim DuneMusicFolder : Set DuneMusicFolder = SDB.UI.NewEdit(Form1)
 	DuneMusicFolder.Common.ControlName = "DuneMusicFolder"
-	DuneMusicFolder.Common.SetRect 35, 90, 315, 20
+	DuneMusicFolder.Common.SetRect 35, 90, 240, 20
 	DuneMusicFolder.Text = DuneMusicFolderName
 	DuneMusicFolder.Common.Hint = "Local (Dune) Music Folder"
 	Set SDB.Objects("MusicFolder") = DuneMusicFolder  
+	
+	Dim ButtonMountDune : Set ButtonMountDune = SDB.UI.NewButton(Form1)
+	ButtonMountDune.Common.SetRect 280, 90, 70, 20
+	ButtonMountDune.Caption = "&Mount"
+	ButtonMountDune.Common.Hint = "Mount Dune Disk"
+	Script.RegisterEvent ButtonMountDune.Common, "OnClick", "ButtonMountDune"
 	
 	Dim NetMusicDrive : Set NetMusicDrive = SDB.UI.NewEdit(Form1)
 	NetMusicDrive.Common.ControlName = "NetMusicDrive"
@@ -163,35 +189,15 @@ Sub OnStartUp() ' create form and controls
 	IndexFolder.Common.Hint = "Music Index Folder on Dune"
 	Set SDB.Objects("IndexFolder") = IndexFolder  
 	
-	Dim ButtonOptions : Set ButtonOptions = SDB.UI.NewButton(Form1)
-	ButtonOptions.Common.SetRect 10, 54, 70, 20
-	ButtonOptions.Caption = "Options vvv"
-	ButtonOptions.Common.Hint = "Open Advanced Options below"
-	Script.RegisterEvent ButtonOptions.Common, "OnClick", "ButtonOptionsClick"
-	Set SDB.Objects("OpenOptions") = ButtonOptions  
-	
-	Dim ButtonCancel : Set ButtonCancel = SDB.UI.NewButton(Form1)
-	ButtonCancel.Common.SetRect 130, 45, 100, 28
-	ButtonCancel.Caption = "Cancel"
-	Script.RegisterEvent ButtonCancel, "OnClick", "ButtonCancelClick"
-	ButtonCancel.Cancel = True
-	ButtonCancel.Common.Hint = "End-Stop-Close-Cancel-Exit"
-	
-	Dim ButtonGo : Set ButtonGo = SDB.UI.NewButton(Form1)
-	ButtonGo.Common.SetRect 250, 45, 100, 28
-	ButtonGo.Caption = "Go"
-	ButtonGo.Common.Hint = "Start/Run/GO!"
-	Script.RegisterEvent ButtonGo.Common, "OnClick", "ButtonGoClick"
-	
 	Dim cbxAlbumSort : Set cbxAlbumSort = SDB.UI.NewCheckBox(Form1)
-	cbxAlbumSort.Caption = "Sort Album Selection"
+	cbxAlbumSort.Caption = "&Sort Album Selection"
 	cbxAlbumSort.Common.SetRect 35, 190, 315, 20
 	cbxAlbumSort.Checked = SortAlbumsByDefault
 	cbxAlbumSort.Common.Hint = "Sort selection by Album, then by Track number"
 	SDB.Objects("SortAlbum") = cbxAlbumSort
 	
 	Dim cbxOverwrite : Set cbxOverwrite = SDB.UI.NewCheckBox(Form1)
-	cbxOverwrite.Caption = "Overwrite Existing Files"
+	cbxOverwrite.Caption = "&Overwrite Existing Files"
 	cbxOverwrite.Common.SetRect 35, 210, 315, 20
 	cbxOverwrite.Checked = DefaultOverwriteFiles
 	cbxOverwrite.Common.Hint = "Overwrite existing files"
@@ -199,7 +205,7 @@ Sub OnStartUp() ' create form and controls
 	cbxOverwrite.Common.Enabled = TRUE
 	
 	Dim cbxBetteraArtScan : Set cbxBetteraArtScan = SDB.UI.NewCheckBox(Form1)
-	cbxBetteraArtScan.Caption = "Use ImageMagick to find and create alternative Album Art"
+	cbxBetteraArtScan.Caption = "Use &ImageMagick to find and create alternative Album Art"
 	cbxBetteraArtScan.Common.SetRect 35, 230, 315, 20
 	cbxBetteraArtScan.Checked = ThoroughAlbumArtScanByDefault
 	cbxBetteraArtScan.Common.Hint = "Needs ImageMagick to be installed"
@@ -208,7 +214,7 @@ Sub OnStartUp() ' create form and controls
 	Script.RegisterEvent cbxBetteraArtScan.Common, "OnClick", "UseIMToggle"
 	
 	Dim cbxGlassBubble : Set cbxGlassBubble = SDB.UI.NewCheckBox(Form1)
-	cbxGlassBubble.Caption = "Create GlassBubble Icons"
+	cbxGlassBubble.Caption = "Create Glass&Bubble Icons"
 	cbxGlassBubble.Common.SetRect 55, 250, 315, 20
 	cbxGlassBubble.Checked = GlassBubbleDefault
 	cbxGlassBubble.Common.Hint = "Needs ImageMagick to be installed"
@@ -220,14 +226,14 @@ Sub OnStartUp() ' create form and controls
 	End If
 	
 	Dim cbxSwapAlbumYear : Set cbxSwapAlbumYear = SDB.UI.NewCheckBox(Form1)
-	cbxSwapAlbumYear.Caption = "Put Year before Album"
+	cbxSwapAlbumYear.Caption = "Put &Year before Album"
 	cbxSwapAlbumYear.Common.SetRect 35, 270, 315, 20
 	cbxSwapAlbumYear.Checked = YearBeforeAlbumDefault
 	cbxSwapAlbumYear.Common.Hint = "Albums will be displayed in chronological order instead of alphabetical"
 	SDB.Objects("YearBeforeAlbum") = cbxSwapAlbumYear
 	
 	Dim cbxAddTracksBranch : Set cbxAddTracksBranch = SDB.UI.NewCheckBox(Form1)
-	cbxAddTracksBranch.Caption = "Add Tracks Branch"
+	cbxAddTracksBranch.Caption = "Add &Tracks Branch"
 	cbxAddTracksBranch.Common.SetRect 35, 290, 315, 20
 	cbxAddTracksBranch.Checked = AddTracksBranchDefault
 	cbxAddTracksBranch.Common.Hint = "This will probably take more time"
@@ -240,7 +246,7 @@ Sub OnStartUp() ' create form and controls
 	
 	Dim ButtonOpen : Set ButtonOpen = SDB.UI.NewButton(Form1)
 	ButtonOpen.Common.SetRect 10, 325, 120, 20
-	ButtonOpen.Caption = "Open Script in Editor"
+	ButtonOpen.Caption = "Open Script in &Editor"
 	ButtonOpen.Common.Hint = "Opens Script in Editor"
 	Script.RegisterEvent ButtonOpen.Common, "OnClick", "ButtonOpenClick"
 	
@@ -260,11 +266,11 @@ Sub ButtonOptionsClick (Form1)
 	
 	If HH = lowform Then	
 		newheight = highform
-		oOptions.Caption = "Options ^^^"
+		oOptions.Caption = "&Advanced Options"
 		oOptions.Common.Hint = "Close Advanced Options"
 	ElseIf HH = highform Then
 		newheight = lowform
-		oOptions.Caption = "Options vvv"
+		oOptions.Caption = "&Advanced Options"
 		oOptions.Common.Hint = "Open Advanced Options below"
 	End If
 	frm1.Common.SetRect frm1.Common.Left, frm1.Common.Top, 370, newheight
@@ -281,6 +287,14 @@ Sub ButtonOpenClick (Form1)
 	End If
 	Set objShell = Nothing
 	ButtonCancelClick
+End Sub
+
+Sub ButtonMountDune (Form1)
+	Dim cmd : cmd = MountDuneCommand
+	Dim objShell : Set objShell = CreateObject ("WScript.Shell")
+	On Error Resume Next
+	objShell.Run(cmd)
+	Set objShell = Nothing
 End Sub
 
 Sub UseIMToggle (Form1)
@@ -1212,9 +1226,11 @@ Sub SortAlbumArray
 	' Sort by Album Name First
 	LowBound = LBound(arrAlbum, 2)
 	HighBound = UBound(arrAlbum, 2)
-	QuickSortCol arrAlbum,LowBound,HighBound,3
+	QuickSortCol arrAlbum,LowBound,HighBound,7
 	' albums with the same name are not identified (add artist/various/empty)
 	' Question: how many albums exist with the same name and are indexed in the same run? ... Well?
+	' Unfortunately enough to run into trouble ... "the Definitive Collection" of R. Cray, JJ Cale and S. Wonder ...
+	' So, the (unused) eighth column is used as album&artist to be able to sort properly
 	
 	' Now Sort each album by tracknumber
 	albumindex = 1 ' First album index
@@ -1226,7 +1242,7 @@ Sub SortAlbumArray
 		End If
 		arrAlbum(6, i) = albumindex
 		
-		If (arrAlbum(3, i) <> arrAlbum(3, i+1)) Then
+		If (arrAlbum(7, i) <> arrAlbum(7, i+1)) Then
 			newalbum = TRUE
 			albumindex = albumindex + 1
 			If i > lowerB Then
@@ -1253,7 +1269,7 @@ Sub AddTrack(aTrack)
 	' 4 Year
 	' 5 TrackPath
 	' 6 "Album Index"
-	' 7 AlbumArtist
+	' 7 Album_and_Artist (used for sorting)
 	'
 	Dim idxLast
 	Dim discno : discno = ""
@@ -1307,7 +1323,7 @@ Sub AddTrack(aTrack)
 	End If
 	
 	arrAlbum(5, idxLast + 1) = aTrack.Path
-	arrAlbum(7, idxLast + 1) = aTrack.AlbumArtistName
+	arrAlbum(7, idxLast + 1) = arrAlbum(3, idxLast + 1)&arrAlbum(2, idxLast + 1)
 End Sub
 
 Function FolderFix(aFolder)
