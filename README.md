@@ -27,4 +27,4 @@ like it, change it, it's yours.
 
 
 Manual, installation, screenshots, downloads:
-  http://code.google.com/p/dunecatalog/
+  https://github.com/alveola/dunecatalog/tree/wiki
