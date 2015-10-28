@@ -1,6 +1,3 @@
-# dunecatalog
-Automatically exported from code.google.com/p/dunecatalog
-
 DuneCatalog
 ===========
 A MediaMonkey Script that creates a Music Index for the Dune Media Streamer.
